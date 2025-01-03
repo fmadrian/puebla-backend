@@ -1,0 +1,6 @@
+@PueblaApi_HostAddress = http://localhost:5139
+
+GET {{PueblaApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
