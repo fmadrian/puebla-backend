@@ -1,0 +1,38 @@
+name: puebla
+networks:
+  puebla_network: # Network name.
+    name: puebla_network
+    ipam: # IP Address Manager (ipam).
+      config:
+        - subnet: 192.168.201.0/26 # Range of addresses a container/service inside the network might have. (61 usable addresses, first one belongs to Docker network gateway)
+services:
+  puebla-postgres:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?error}
+      - POSTGRES_DB=${POSTGRES_DB?error}
+      - POSTGRES_USER=${POSTGRES_USER?error}
+    ports:
+      - 5432:5432
+    volumes:
+      - puebla_pgdata:/var/lib/postgresql/data
+    networks:
+      puebla_network:
+        ipv4_address: 192.168.201.2
+  puebla-pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - 80:80
+    environment:
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD?error}
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL?error}
+    volumes:
+      - puebla_pgadmin_data:/var/lib/pgadmin
+    networks:
+      puebla_network:
+        ipv4_address: 192.168.201.3
+volumes:
+  puebla_pgdata:
+    name: puebla_pgdata
+  puebla_pgadmin_data:
+    name: pgadmin_data

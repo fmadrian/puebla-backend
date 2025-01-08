@@ -399,3 +399,7 @@ FodyWeavers.xsd
 
 # Local files
 *.local
+
+# Local secrets/environment (Docker) file
+secrets.json
+.env
