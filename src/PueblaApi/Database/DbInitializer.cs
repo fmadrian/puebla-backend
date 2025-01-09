@@ -1,4 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using PueblaApi.Database.Seedings;
+using PueblaApi.Entities;
+using PueblaApi.Settings;
 
 namespace PueblaApi.Database
 {
@@ -13,6 +17,17 @@ namespace PueblaApi.Database
 
             // From the application scopes, get DbContext, user and role managers.
             var services = scope.ServiceProvider;
+            ApplicationDbContext context = scope.ServiceProvider.GetService<ApplicationDbContext>();
+
+            UserManager<ApplicationUser> userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+            RoleManager<IdentityRole> roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+            AdminUserConfiguration adminUserConfiguration = scope.ServiceProvider.GetService<AdminUserConfiguration>();
+
+            // Creates the database (if it doesn't exist, and applies pending migrations)
+            context.Database.Migrate();
+            // Seeds roles and administrator user.
+            await UsersRolesSeedings.Initialize(userManager, roleManager, adminUserConfiguration);
         }
     }
 }
