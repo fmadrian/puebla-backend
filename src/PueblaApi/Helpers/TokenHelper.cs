@@ -32,8 +32,8 @@ public class TokenHelper
         // A token descriptor is where we put the information that goes inside the payload of the token.
         SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor()
         {
-            Issuer = "puebla-api",
-            Audience = "puebla-webapp",
+            Issuer = _jwtConfig.Issuer,
+            Audience = _jwtConfig.Audience,
             TokenType = "JWT",
 
             Subject = new ClaimsIdentity(userClaims),

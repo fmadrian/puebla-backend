@@ -34,6 +34,10 @@ TokenValidationParameters tokenValidationParameters = new TokenValidationParamet
 
     ValidateIssuer = true,
     ValidateAudience = true,
+
+    ValidIssuer = jwtConfiguration.Issuer,
+    ValidAudience = jwtConfiguration.Audience,
+
     RequireExpirationTime = true,
 
     ValidateLifetime = true // Validates for how long the token lives
