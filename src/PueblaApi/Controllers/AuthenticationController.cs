@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using PueblaApi.Database;
 using PueblaApi.Entities;
@@ -19,6 +18,8 @@ using PueblaApi.DTOS.Auth;
 using IPacientesApi.Dtos.User;
 using PueblaApi.DTOS.Base;
 using PasswordGenerator;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 
 namespace PueblaApi.Controllers;
@@ -78,7 +79,7 @@ public class AuthenticationController : ControllerBase
     /// </summary>
     /// <param name="dto">JSON that includes all information necessary to create an account</param>
     /// <returns></returns>
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin},{ApiRoles.Doctor}")] // Requires a JWT that has the role Admin or Manager.
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin},{ApiRoles.Manager}")] // Requires a JWT that has the role Admin or Manager.
     [HttpPost("signup")]
     public async Task<ActionResult> Signup(SignupRequest dto)
     {
@@ -170,25 +171,7 @@ public class AuthenticationController : ControllerBase
             return ErrorHelper.Internal(this._logger, e.StackTrace);
         }
     }
-    /// <summary>
-    ///  Log user out and dispose of refresh tokens.
-    /// </summary>
-    /// <param name="dto">JSON that includes the last JWT and refresh token used </param>
-    /// <returns></returns>
-    /*[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    [HttpPut("logout")]
-    public async Task<ActionResult> Logout([FromBody] LogoutRequest dto)
-    {
-        try
-        {
-            return Ok(ResponseHelper.SuccessfulResponse("Sesión cerrada."));
-        }
-        catch (Exception e)
-        {
-            return ErrorHelper.Internal(this._logger, e.StackTrace);
-        }
-    }
-    */
+
     /// <summary>
     /// Endpoint that changes the password of an account and sends it to its email.
     /// </summary>
@@ -251,8 +234,6 @@ public class AuthenticationController : ControllerBase
     [HttpPut("update")]
     public async Task<ActionResult> Update([FromBody] UpdateUserRequest dto)
     {
-        // If the user changes his username or password, delete all existent refresh tokens.
-        bool deleteAllRefreshTokens = false;
         try
         {
             // 1. Get user using id obtained from token
@@ -281,7 +262,6 @@ public class AuthenticationController : ControllerBase
                 else
                 {
                     user.Email = dto.Email;
-                    // user.EmailConfirmed = false;
                 }
             }
             // Forbidden to change the 'admin' username.
@@ -293,7 +273,6 @@ public class AuthenticationController : ControllerBase
                 else
                 {
                     user.UserName = dto.Username;
-                    deleteAllRefreshTokens = true;
                 }
             }
             // 5. Change password
@@ -305,19 +284,10 @@ public class AuthenticationController : ControllerBase
                     return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse(
                         passwordChangeResult.Errors.Select(e => e.Description).ToList()
                 ));
-                deleteAllRefreshTokens = true;
             }
             // 6. Write date the user was updated and save changes.
-            // user.DateUpdated = DateTimeOffset.Now;
             await this._userManager.UpdateAsync(user);
-            // 7. If the user changes its username or password, delete all its refresh tokens.
-            /*if (deleteAllRefreshTokens)
-            {
-                var refreshTokens = await this._context.RefreshToken.Where(token => token.UserId == user.Id).ToListAsync();
-                this._context.RefreshToken.RemoveRange(refreshTokens);
-                await this._context.SaveChangesAsync();
-            }*/
-            // 8. Issue new JWT and refresh token.
+            // 7. Issue new JWT and refresh token.
             return Ok(await this.GenerateSuccessfulAuthenticationResponse(user));
         }
         catch (Exception e)
@@ -333,7 +303,7 @@ public class AuthenticationController : ControllerBase
     /// <param name="dto">JSON with data to be changed</param>
     /// <returns></returns>
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}")] // Requires a JWT.
-    [HttpPut("update/{userId}")]
+    [HttpPut("users/{userId}")]
     public async Task<ActionResult> UpdateAny(string userId, [FromBody] UpdateAnyUserRequest dto)
     {
         try
@@ -387,8 +357,7 @@ public class AuthenticationController : ControllerBase
                         passwordChangeResult.Errors.Select(e => e.Description).ToList()
                 ));
             }
-            // 6. Write date the user was updated and save changes. 
-            // user.DateUpdated = DateTimeOffset.Now;
+            // 6. Save changes.
             await this._userManager.UpdateAsync(user);
             // 7. Change the user's roles.
             if (!dto.Role.IsNullOrEmpty())
@@ -410,10 +379,6 @@ public class AuthenticationController : ControllerBase
                     return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Rol no existe."));
                 }
             }
-            // 6. Delete all its refresh tokens.
-            //var refreshTokens = await this._context.RefreshToken.Where(token => token.UserId == user.Id).ToListAsync();
-            //this._context.RefreshToken.RemoveRange(refreshTokens);
-            //await this._context.SaveChangesAsync();
 
             // 7. Return response.
             return Ok(ResponseHelper.SuccessfulResponse("Información de usuario actualizada."));
@@ -431,13 +396,13 @@ public class AuthenticationController : ControllerBase
     /// <param name="userId">ID of the user whose information we are going to retrieve.</param>
     /// <returns>JSON with the information of the user</returns>
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    [HttpGet("users/{id}")]
-    public async Task<ActionResult> GetUser(string id)
+    [HttpGet("users/{userId}")]
+    public async Task<ActionResult> GetUser(string userId)
     {
         try
         {
             // 1. Search user.
-            ApplicationUser user = await this._userManager.FindByIdAsync(id);
+            ApplicationUser user = await this._userManager.FindByIdAsync(userId);
             if (user == null)
                 return NotFound();
 
@@ -568,7 +533,7 @@ public class AuthenticationController : ControllerBase
     /// </summary>
     /// <returns>JSON with result.</returns>
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}")]
-    [HttpPut("toggle/{userId}")]
+    [HttpPut("users/{userId}/toggle")]
     public async Task<ActionResult> Toggle(string userId)
     {
         try
@@ -585,14 +550,6 @@ public class AuthenticationController : ControllerBase
             // 3. Deactivate/reactivate account and save changes.
             user.IsEnabled = !user.IsEnabled;
             await this._userManager.UpdateAsync(user);
-
-            if (!user.IsEnabled)
-            {
-                // 4. Delete all its refresh tokens when a user is disabled.
-                /*var refreshTokens = await this._context.RefreshToken.Where(token => token.UserId == user.Id).ToListAsync();
-                this._context.RefreshToken.RemoveRange(refreshTokens);
-                await this._context.SaveChangesAsync();*/
-            }
 
             // 5. Return response.
             return Ok(ResponseHelper.SuccessfulResponse($"Cuenta {user.UserName} fue {(user.IsEnabled ? "activada" : "desactivada")} ."));
@@ -628,6 +585,40 @@ public class AuthenticationController : ControllerBase
             return ErrorHelper.Internal(this._logger, e.StackTrace);
         }
     }
+
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}")]
+    [HttpDelete("users/{userId}")]
+    public async Task<ActionResult> Delete(string userId)
+    {
+        try
+        {
+            // 1. Get user using id obtained from path parameter
+            ApplicationUser user = await this._userManager.FindByIdAsync(userId);
+            if (user == null)
+                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No existe un usuario con este ID."));
+
+            // 2. Don't allow admin user to be deleted.
+            if (user.UserName == "admin")
+                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No se puede desactivar el usuario administrador."));
+
+            string username = user.UserName;
+
+            // 3. Delete the user.
+            await this._userManager.DeleteAsync(user);
+
+            // 5. Return response.
+            return Ok(ResponseHelper.SuccessfulResponse($"Cuenta {username} fue eliminada."));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
+
+
+
+
+
     #endregion
 
     #region Helpers

@@ -27,9 +27,5 @@ public class ApplicationUser : IdentityUser
     public string NationalId { set; get; }
     [Required]
     public bool IsEnabled { set; get; }
-    /// <summary>
-    /// Date when the record was added to the database.
-    /// </summary>
-    #region Metadata
-    #endregion
+
 }
