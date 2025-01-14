@@ -227,10 +227,9 @@ public class AuthenticationController : ControllerBase
             this._logger.LogInformation("Setting new password.");
             await this._userManager.AddPasswordAsync(user, newPassword);
 
-            // 6. Write date the user was updated and save change.
-            //user.DateUpdated = DateTimeOffset.Now;
+            // 6. Save changes.
             await this._userManager.UpdateAsync(user);
-            // 7. Return response
+            // 7. Return response.
             return Ok(ResponseHelper.SuccessfulResponse("Contraseña restablecida."));
         }
         catch (HttpRequestException e)
@@ -633,12 +632,17 @@ public class AuthenticationController : ControllerBase
 
     #region Helpers
     private async Task<Response<AuthResponse>> GenerateSuccessfulAuthenticationResponse(ApplicationUser user)
-    {   
+    {
+        // IMPORTANT: Response comes from the HttpContext from the incoming HTTP request.
+
         // Generate a JWT, refresh token, and add the roles to the response object.
         Response<AuthResponse> response = await TokenHelper.GenerateJWTToken(user, _jwtConfiguration,
         _context, _userManager, _roleManager);
+        // Add JWT to response's headers.
+        Response.Headers.Append("Authorization", $"Bearer {response.Object.Token}");
         // Add roles and personal information.
         response.Object.Roles = (await this._userManager.GetRolesAsync(user)).ToList();
+        // TODO: Remove JWT from response object.
         response.Object.FirstName = user.FirstName;
         response.Object.LastName = user.LastName;
         return response;
