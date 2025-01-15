@@ -13,7 +13,7 @@ namespace PueblaApi.Database
     {
         #region Entities
 
-
+        public DbSet<EmailConfirmationCode> EmailConfirmationCodes { get; set; }
 
         #endregion
         public ApplicationDbContext(DbContextOptions options) : base(options)

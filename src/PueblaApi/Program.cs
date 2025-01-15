@@ -7,6 +7,8 @@ using Microsoft.IdentityModel.Tokens;
 using PueblaApi.Database;
 using PueblaApi.Entities;
 using PueblaApi.Helpers;
+using PueblaApi.Repositories;
+using PueblaApi.Repositories.Interfaces;
 using PueblaApi.Services.Interfaces;
 using PueblaApi.Settings;
 
@@ -69,7 +71,9 @@ builder.Services.AddSingleton(tokenValidationParameters);
 // Fixes issue: Unable to resolve service for type 'Microsoft.AspNetCore.Identity.UserManager`1[Microsoft.AspNetCore.Identity.IdentityUser]'
 // By adding IdentityRole we're telling Identity framework, we want to embed roles inside the Identity.
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(
-    options => options.SignIn.RequireConfirmedEmail = false // Don't require to confirm email for the new accounts.
+    options => {
+        options.SignIn.RequireConfirmedEmail = true; // Require to confirm email for the new accounts.
+    } 
 ).AddEntityFrameworkStores<ApplicationDbContext>();
 #endregion
 
@@ -115,7 +119,7 @@ builder.Services.AddCors(options =>
 #endregion
 
 #region Repositories
-
+builder.Services.AddScoped<IEmailConfirmationCodeRepository, EmailConfirmationCodeRepository>();
 #endregion
 
 var app = builder.Build();

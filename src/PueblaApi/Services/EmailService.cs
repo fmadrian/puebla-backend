@@ -49,7 +49,7 @@ public class EmailService : IEmailService
                     error = "Error al autorizarse con SendGrid.";
                     break;
                 case System.Net.HttpStatusCode.Forbidden:
-                    error = "Muchos intentos fallidos, espere un momento y vuelva a intentar.";
+                    error = "Muchos intentos fallidos o credenciales de servidor de correo incorrectas, espere un momento y vuelva a intentar.";
                     break;
                 case System.Net.HttpStatusCode.NotAcceptable:
                     error = "Error interno al recibir la respuesta del servicio de correo.";

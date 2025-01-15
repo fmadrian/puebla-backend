@@ -20,6 +20,7 @@ using PueblaApi.DTOS.Base;
 using PasswordGenerator;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using PueblaApi.Repositories.Interfaces;
 
 
 namespace PueblaApi.Controllers;
@@ -44,6 +45,9 @@ public class AuthenticationController : ControllerBase
     private readonly JwtConfiguration _jwtConfiguration;
     // 15. Inject email service.
     private readonly IEmailService _emailService;
+    // 16. Inject email activation code repository.
+    private readonly IEmailConfirmationCodeRepository _emailConfirmationCodeRepository;
+
     public AuthenticationController(
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
@@ -52,7 +56,8 @@ public class AuthenticationController : ControllerBase
         RoleManager<IdentityRole> roleManager,
         ILogger<AuthenticationController> logger,
         JwtConfiguration jwtConfiguration,
-        IEmailService emailService)
+        IEmailService emailService,
+        IEmailConfirmationCodeRepository emailActivationCodeRepository)
     {
         // 1. Indicate dependency injection container to Inject the UserManager.
         this._userManager = userManager;
@@ -70,7 +75,9 @@ public class AuthenticationController : ControllerBase
         this._jwtConfiguration = jwtConfiguration;
         // 15. Inject email service.
         this._emailService = emailService;
-    }
+         // 16. Inject email activation code repository.
+        this._emailConfirmationCodeRepository = emailActivationCodeRepository;
+}
     #region Endpoints
 
     /// <summary>
@@ -101,7 +108,8 @@ public class AuthenticationController : ControllerBase
                 FirstName = dto.FirstName.ToUpper(),
                 LastName = dto.LastName.ToUpper(),
                 IsEnabled = true,
-                EmailConfirmed = true,
+                EmailConfirmed = false,
+                
             };
             var userWasCreated = await this._userManager.CreateAsync(newUser, dto.Password); // Creates user (password is encrypted in the function)
             if (!userWasCreated.Succeeded)
@@ -124,7 +132,10 @@ public class AuthenticationController : ControllerBase
                     .Concat(roleWasAdded.Errors.Select(error => error.Description).ToList())
                 );
             }
+            // 4. Save changes related to user.
             await this._context.SaveChangesAsync();
+            // 5. Generate email activation code.
+            await this.GenerateEmailConfirmationCode(newUser);
             // 5. Return URL where we can retrieve user's information and the user information.
             return CreatedAtAction(nameof(GetUser), new { id = newUser.Id }, ResponseHelper.SuccessfulResponse<UserResponse>(
                 new UserResponse()
@@ -132,6 +143,10 @@ public class AuthenticationController : ControllerBase
                     Id = newUser.Id
                 })
             );
+        }
+        catch (HttpRequestException e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace, "No hay conexión con el servidor de correo.");
         }
         catch (Exception e)
         {
@@ -163,6 +178,11 @@ public class AuthenticationController : ControllerBase
             {
                 return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {user.UserName} fue desactivado."));
             }
+            // 4. Check email is enabled
+            if(!(await this._userManager.IsEmailConfirmedAsync(user)))
+            {
+                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {user.UserName} debe activar el correo electrónico."));
+            }
             // 4. If the user exists, we generate the token and return it.
             return Ok(await this.GenerateSuccessfulAuthenticationResponse(user));
         }
@@ -177,8 +197,8 @@ public class AuthenticationController : ControllerBase
     /// </summary>
     /// <param name="dto">JSON that contains username and email used to create the account</param>
     /// <returns></returns>
-    [HttpPut("recover-password")]
-    public async Task<ActionResult> RecoverPassword([FromBody] RecoverPasswordRequest dto)
+    [HttpPut("recover-account")]
+    public async Task<ActionResult> RecoverAccount([FromBody] RecoverPasswordRequest dto)
     {
         try
         {
@@ -193,27 +213,37 @@ public class AuthenticationController : ControllerBase
             // 2. Check email provided matches email linked to account.
             if (user.Email != dto.Email)
                 return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Correo no corresponde a usuario."));
-            // 3. Create a new password.
-            this._logger.LogInformation("Creating new password...");
-            string newPassword = new Password(passwordLength).IncludeNumeric().IncludeLowercase().IncludeUppercase().IncludeSpecial("#_!=").Next().ToString();
-            this._logger.LogInformation("New password created.");
 
-            // 4. Send the new password on an email.
-            this._logger.LogInformation("Attempting to send email to user with new password.");
-            string emailSubject = $"IPACIENTES - Se ha reestablecido la contraseña";
-            string emailHtmlContent = $"IPACIENTES - RESTABLACIMIENTO DE CONTRASEÑA <br><br>La nueva contraseña para el usuario <i>{user.UserName}</i> es:<br><br><b>{newPassword}</b><br><br>Este es un mensaje generado automáticamente. Por favor, no respondas a este correo electrónico.";
-            await this._emailService.SendEmail(user.Email, emailSubject, emailHtmlContent);
+            // 3. If the email hasn't been activated/confirmed, send a new confirmation code.
+            // Otherwise, send a new password
+            if (!(await this._userManager.IsEmailConfirmedAsync(user))) {
+                this._logger.LogInformation("Attempting to send a new email confirmation code to the user.");
+                await this.GenerateEmailConfirmationCode(user);
+                return Ok(ResponseHelper.SuccessfulResponse($"Correo de confirmación enviado a {user.Email}"));
+            }
+            else {
+                // 4. Create a new password.
+                this._logger.LogInformation("Creating new password...");
+                string newPassword = new Password(passwordLength).IncludeNumeric().IncludeLowercase().IncludeUppercase().IncludeSpecial("#_!=").Next().ToString();
+                this._logger.LogInformation("New password created.");
 
-            // 5. Change the user's password.
-            this._logger.LogInformation("Removing old password.");
-            await this._userManager.RemovePasswordAsync(user);
-            this._logger.LogInformation("Setting new password.");
-            await this._userManager.AddPasswordAsync(user, newPassword);
+                // 5. Send the new password on an email.
+                this._logger.LogInformation("Attempting to send email to user with new password.");
+                string emailSubject = $"IPACIENTES - Se ha reestablecido la contraseña";
+                string emailHtmlContent = $"IPACIENTES - RESTABLACIMIENTO DE CONTRASEÑA <br><br>La nueva contraseña para el usuario <i>{user.UserName}</i> es:<br><br><b>{newPassword}</b><br><br>Este es un mensaje generado automáticamente. Por favor, no respondas a este correo electrónico.";
+                await this._emailService.SendEmail(user.Email, emailSubject, emailHtmlContent);
 
-            // 6. Save changes.
-            await this._userManager.UpdateAsync(user);
-            // 7. Return response.
-            return Ok(ResponseHelper.SuccessfulResponse("Contraseña restablecida."));
+                // 6. Change the user's password.
+                this._logger.LogInformation("Removing old password.");
+                await this._userManager.RemovePasswordAsync(user);
+                this._logger.LogInformation("Setting new password.");
+                await this._userManager.AddPasswordAsync(user, newPassword);
+
+                // 7. Save changes.
+                await this._userManager.UpdateAsync(user);
+                // 8. Return response.
+                return Ok(ResponseHelper.SuccessfulResponse("Contraseña restablecida."));
+            }
         }
         catch (HttpRequestException e)
         {
@@ -262,6 +292,8 @@ public class AuthenticationController : ControllerBase
                 else
                 {
                     user.Email = dto.Email;
+                    // Force user to confirm its new email.
+                    user.EmailConfirmed = false;
                 }
             }
             // Forbidden to change the 'admin' username.
@@ -287,7 +319,10 @@ public class AuthenticationController : ControllerBase
             }
             // 6. Write date the user was updated and save changes.
             await this._userManager.UpdateAsync(user);
-            // 7. Issue new JWT and refresh token.
+            // 7. Send email confirmation after the changes have been saved.
+            if (!user.EmailConfirmed)
+               await this.GenerateEmailConfirmationCode(user);
+            // 8. Issue new JWT and refresh token.
             return Ok(await this.GenerateSuccessfulAuthenticationResponse(user));
         }
         catch (Exception e)
@@ -306,6 +341,7 @@ public class AuthenticationController : ControllerBase
     [HttpPut("users/{userId}")]
     public async Task<ActionResult> UpdateAny(string userId, [FromBody] UpdateAnyUserRequest dto)
     {
+        // IMPORTANT: Using this endpoint bypasses email confirmation. This is by design.
         try
         {
             // 1. Get user using id obtained from path parameter
@@ -559,7 +595,63 @@ public class AuthenticationController : ControllerBase
             return ErrorHelper.Internal(this._logger, e.StackTrace);
         }
     }
+    
+    [HttpGet("confirm/{code}")]
+    public async Task<ActionResult> ConfirmEmail(Guid code)
+    {
+        try
+        {
+            // 1. Search token.
+            EmailConfirmationCode activationCode = await this._emailConfirmationCodeRepository.GetByCode(code);
+            if(activationCode == null)
+                return NotFound();
+            
+            ApplicationUser user = activationCode.User;
 
+            if(DateTimeOffset.Now.CompareTo(activationCode.ExpirationDate) > 0)
+            {
+                return Unauthorized(this.GenerateUnsuccessfulAuthenticationResponse("Código ha expirado, recupera la cuenta para obtener uno nuevo"));
+            }
+
+            // 2. Change state of the account / activate email.
+            user.EmailConfirmed = true;
+            // 3. Delete token.
+            await this._emailConfirmationCodeRepository.Delete(activationCode);
+            // 4. Save changes and return response.
+            return Ok(ResponseHelper.SuccessfulResponse($"Correo para cuenta {user.UserName} ha sido confirmado."));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
+
+    private async Task GenerateEmailConfirmationCode(ApplicationUser user)
+    {
+        // 1. Verify there are no codes for this user.
+        // If there is other code, delete it.
+        EmailConfirmationCode existentCode = await this._emailConfirmationCodeRepository.GetByUser(user);
+        if(existentCode != null){
+            await this._emailConfirmationCodeRepository.Delete(existentCode);
+        }
+        // 2. Create and store new code.
+        EmailConfirmationCode code = new EmailConfirmationCode()
+        {
+            User = user,
+            UserId = user.Id,
+            Code = Guid.NewGuid(),
+            ExpirationDate = DateTimeOffset.UtcNow.AddMinutes(20) // 20 minutes.
+        };
+        code = await this._emailConfirmationCodeRepository.Create(code);
+        // 3. Send email.
+        // 4. Send the new password on an email.
+        this._logger.LogInformation("Attempting to send code to new user.");
+        string emailSubject = $"puebla - Se necesita activar la cuenta";
+        string emailLink = $"{ApiRouteSettings.Server}/{ApiControllerRoutes.Authentication}/confirm/{code.Code}";
+        string emailHtmlContent = $"puebla - Activación de cuenta <br><br>Para activar el usuario <i>{user.UserName}</i> haga click en el siguiente enlace:<br><br><a href='{emailLink}'>{emailLink}</a><br><br>Este es un mensaje generado automáticamente. Por favor, no respondas a este correo electrónico.";
+        await this._emailService.SendEmail(user.Email, emailSubject, emailHtmlContent);
+
+    }
 
     /// <summary>
     /// Returns list of all available roles.
