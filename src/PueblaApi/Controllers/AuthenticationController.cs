@@ -608,7 +608,7 @@ public class AuthenticationController : ControllerBase
             
             ApplicationUser user = activationCode.User;
 
-            if(DateTimeOffset.Now.CompareTo(activationCode.ExpirationDate) > 0)
+            if(DateTimeOffset.UtcNow.CompareTo(activationCode.ExpirationDate) > 0)
             {
                 return Unauthorized(this.GenerateUnsuccessfulAuthenticationResponse("Código ha expirado, recupera la cuenta para obtener uno nuevo"));
             }

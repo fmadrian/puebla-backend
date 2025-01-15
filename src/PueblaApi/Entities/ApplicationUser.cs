@@ -28,4 +28,6 @@ public class ApplicationUser : IdentityUser
     [Required]
     public bool IsEnabled { set; get; }
 
+    public EmailConfirmationCode? EmailConfirmationCode { get; set; }
+
 }

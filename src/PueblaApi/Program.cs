@@ -81,7 +81,6 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(
 
 var dbSettings = builder.Configuration.GetSection(nameof(DbSettings)).Get<DbSettings>();
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(dbSettings.ConnectionString));
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 #endregion
 
 

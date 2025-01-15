@@ -25,7 +25,7 @@ namespace PueblaApi.Database
             AdminUserConfiguration adminUserConfiguration = scope.ServiceProvider.GetService<AdminUserConfiguration>();
 
             // Creates the database (if it doesn't exist, and applies pending migrations)
-            context.Database.Migrate();
+            // context.Database.Migrate();
             // Seeds roles and administrator user.
             await UsersRolesSeedings.Initialize(userManager, roleManager, adminUserConfiguration);
         }
