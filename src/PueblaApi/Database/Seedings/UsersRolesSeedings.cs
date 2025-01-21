@@ -47,11 +47,11 @@ public class UsersRolesSeedings
             {
                 Email = email,
                 UserName = username,
+                FirstName = "admin",
+                LastName = "admin",
+                NationalId = "0",
+                IsEnabled = true,
                 EmailConfirmed = true,
-                FirstName = adminUserConfiguration.FirstName,
-                LastName = adminUserConfiguration.LastName,
-                NationalId = adminUserConfiguration.NationalId,
-                IsEnabled = true
             };
             // If it doesn't exist, create administrator user and assign them the admin role.
             await userManager.CreateAsync(admin, password);
