@@ -49,7 +49,7 @@ public class UsersRolesSeedings
                 UserName = username,
                 FirstName = "admin",
                 LastName = "admin",
-                NationalId = "0",
+                //NationalId = "0",
                 IsEnabled = true,
                 EmailConfirmed = true,
             };

@@ -75,9 +75,9 @@ public class AuthenticationController : ControllerBase
         this._jwtConfiguration = jwtConfiguration;
         // 15. Inject email service.
         this._emailService = emailService;
-         // 16. Inject email activation code repository.
+        // 16. Inject email activation code repository.
         this._emailConfirmationCodeRepository = emailActivationCodeRepository;
-}
+    }
     #region Endpoints
 
     /// <summary>
@@ -104,12 +104,12 @@ public class AuthenticationController : ControllerBase
                 UserName = dto.Username.ToLower(),
                 Email = dto.Email.ToLower(),
                 // Remove anything that is not a letter or number.
-                NationalId = Regex.Replace(dto.NationalId, @"[^A-Za-z0-9]", "", RegexOptions.IgnoreCase),
+                //NationalId = Regex.Replace(dto.NationalId, @"[^A-Za-z0-9]", "", RegexOptions.IgnoreCase),
                 FirstName = dto.FirstName.ToUpper(),
                 LastName = dto.LastName.ToUpper(),
                 IsEnabled = true,
                 EmailConfirmed = false,
-                
+
             };
             var userWasCreated = await this._userManager.CreateAsync(newUser, dto.Password); // Creates user (password is encrypted in the function)
             if (!userWasCreated.Succeeded)
@@ -179,7 +179,7 @@ public class AuthenticationController : ControllerBase
                 return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {user.UserName} fue desactivado."));
             }
             // 4. Check email is enabled
-            if(!(await this._userManager.IsEmailConfirmedAsync(user)))
+            if (!(await this._userManager.IsEmailConfirmedAsync(user)))
             {
                 return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {user.UserName} debe activar el correo electrónico."));
             }
@@ -197,8 +197,8 @@ public class AuthenticationController : ControllerBase
     /// </summary>
     /// <param name="dto">JSON that contains username and email used to create the account</param>
     /// <returns></returns>
-    [HttpPut("recover-account")]
-    public async Task<ActionResult> RecoverAccount([FromBody] RecoverPasswordRequest dto)
+    [HttpPut("recover-password")]
+    public async Task<ActionResult> RecoverPassword([FromBody] RecoverPasswordRequest dto)
     {
         try
         {
@@ -216,12 +216,14 @@ public class AuthenticationController : ControllerBase
 
             // 3. If the email hasn't been activated/confirmed, send a new confirmation code.
             // Otherwise, send a new password
-            if (!(await this._userManager.IsEmailConfirmedAsync(user))) {
+            if (!(await this._userManager.IsEmailConfirmedAsync(user)))
+            {
                 this._logger.LogInformation("Attempting to send a new email confirmation code to the user.");
                 await this.GenerateEmailConfirmationCode(user);
                 return Ok(ResponseHelper.SuccessfulResponse($"Correo de confirmación enviado a {user.Email}"));
             }
-            else {
+            else
+            {
                 // 4. Create a new password.
                 this._logger.LogInformation("Creating new password...");
                 string newPassword = new Password(passwordLength).IncludeNumeric().IncludeLowercase().IncludeUppercase().IncludeSpecial("#_!=").Next().ToString();
@@ -282,8 +284,8 @@ public class AuthenticationController : ControllerBase
                 user.FirstName = dto.FirstName.ToUpper();
             if (!dto.LastName.IsNullOrEmpty() && user.LastName != dto.LastName)
                 user.LastName = dto.LastName.ToUpper();
-            if (!dto.NationalId.IsNullOrEmpty() && user.NationalId != dto.NationalId)
-                user.NationalId = Regex.Replace(dto.NationalId, @"[^A-Za-z0-9]", "", RegexOptions.IgnoreCase);
+            // if (!dto.NationalId.IsNullOrEmpty() && user.NationalId != dto.NationalId)
+            //    user.NationalId = Regex.Replace(dto.NationalId, @"[^A-Za-z0-9]", "", RegexOptions.IgnoreCase);
             if (!dto.Email.IsNullOrEmpty() && user.Email != dto.Email)
             {
                 // 3.4. Check email availability.
@@ -321,7 +323,7 @@ public class AuthenticationController : ControllerBase
             await this._userManager.UpdateAsync(user);
             // 7. Send email confirmation after the changes have been saved.
             if (!user.EmailConfirmed)
-               await this.GenerateEmailConfirmationCode(user);
+                await this.GenerateEmailConfirmationCode(user);
             // 8. Issue new JWT and refresh token.
             return Ok(await this.GenerateSuccessfulAuthenticationResponse(user));
         }
@@ -358,8 +360,8 @@ public class AuthenticationController : ControllerBase
                 user.FirstName = dto.FirstName;
             if (!dto.LastName.IsNullOrEmpty() && user.LastName != dto.LastName)
                 user.LastName = dto.LastName;
-            if (!dto.NationalId.IsNullOrEmpty() && user.NationalId != dto.NationalId)
-                user.NationalId = dto.NationalId;
+            //if (!dto.NationalId.IsNullOrEmpty() && user.NationalId != dto.NationalId)
+            //    user.NationalId = dto.NationalId;
             if (!dto.Email.IsNullOrEmpty() && user.Email != dto.Email)
             {
                 // 3.4. Check email availability.
@@ -449,7 +451,7 @@ public class AuthenticationController : ControllerBase
                 UserName = user.UserName,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                NationalId = user.NationalId,
+                //NationalId = user.NationalId,
                 Email = user.Email,
                 Roles = (await this._userManager.GetRolesAsync(user)).ToList(),
                 IsEnabled = user.IsEnabled
@@ -472,8 +474,8 @@ public class AuthenticationController : ControllerBase
             if (!request.Q.IsNullOrEmpty())
                 query = query.Where(u => (EF.Functions.ILike(u.UserName, $"%{request.Q}%") ||
                                         EF.Functions.ILike(u.FirstName, $"%{request.Q}%") ||
-                                        EF.Functions.ILike(u.LastName, $"%{request.Q}%") ||
-                                        EF.Functions.ILike(u.NationalId, $"%{request.Q}%")) &&
+                                        EF.Functions.ILike(u.LastName, $"%{request.Q}%")) &&
+                                        // || EF.Functions.ILike(u.NationalId, $"%{request.Q}%")) &&
                                         u.IsEnabled == request.IsEnabled
                 );
             else
@@ -486,7 +488,7 @@ public class AuthenticationController : ControllerBase
                 "username" => x => x.UserName,
                 "firstname" => x => x.FirstName,
                 "lastname" => x => x.LastName,
-                "nationalid" => x => x.NationalId,
+                //"nationalid" => x => x.NationalId,
                 _ => x => x.Id // Default.
             };
             // 3. Apply sorting order (descending or ascending)
@@ -507,7 +509,7 @@ public class AuthenticationController : ControllerBase
                     Email = u.Email,
                     FirstName = u.FirstName,
                     LastName = u.LastName,
-                    NationalId = u.NationalId,
+                    //NationalId = u.NationalId,
                     Roles = (await this._userManager.GetRolesAsync(u)).ToList(),
                     IsEnabled = u.IsEnabled
                 });
@@ -553,7 +555,7 @@ public class AuthenticationController : ControllerBase
                 UserName = user.UserName,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                NationalId = user.NationalId,
+                //NationalId = user.NationalId,
                 Email = user.Email,
                 Roles = (await this._userManager.GetRolesAsync(user)).ToList(),
             }));
@@ -595,7 +597,7 @@ public class AuthenticationController : ControllerBase
             return ErrorHelper.Internal(this._logger, e.StackTrace);
         }
     }
-    
+
     [HttpGet("confirm/{code}")]
     public async Task<ActionResult> ConfirmEmail(Guid code)
     {
@@ -603,12 +605,12 @@ public class AuthenticationController : ControllerBase
         {
             // 1. Search token.
             EmailConfirmationCode activationCode = await this._emailConfirmationCodeRepository.GetByCode(code);
-            if(activationCode == null)
+            if (activationCode == null)
                 return NotFound();
-            
+
             ApplicationUser user = activationCode.User;
 
-            if(DateTimeOffset.UtcNow.CompareTo(activationCode.ExpirationDate) > 0)
+            if (DateTimeOffset.UtcNow.CompareTo(activationCode.ExpirationDate) > 0)
             {
                 return Unauthorized(this.GenerateUnsuccessfulAuthenticationResponse("Código ha expirado, recupera la cuenta para obtener uno nuevo"));
             }
@@ -631,7 +633,8 @@ public class AuthenticationController : ControllerBase
         // 1. Verify there are no codes for this user.
         // If there is other code, delete it.
         EmailConfirmationCode existentCode = await this._emailConfirmationCodeRepository.GetByUser(user);
-        if(existentCode != null){
+        if (existentCode != null)
+        {
             await this._emailConfirmationCodeRepository.Delete(existentCode);
         }
         // 2. Create and store new code.
