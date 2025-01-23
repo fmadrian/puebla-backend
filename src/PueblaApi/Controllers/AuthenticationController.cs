@@ -47,6 +47,8 @@ public class AuthenticationController : ControllerBase
     private readonly IEmailService _emailService;
     // 16. Inject email activation code repository.
     private readonly IEmailConfirmationCodeRepository _emailConfirmationCodeRepository;
+    // 17. Inject web client settings.
+    private readonly WebClientSettings _webClientSettings;
 
     public AuthenticationController(
         UserManager<ApplicationUser> userManager,
@@ -57,7 +59,8 @@ public class AuthenticationController : ControllerBase
         ILogger<AuthenticationController> logger,
         JwtConfiguration jwtConfiguration,
         IEmailService emailService,
-        IEmailConfirmationCodeRepository emailActivationCodeRepository)
+        IEmailConfirmationCodeRepository emailActivationCodeRepository,
+        WebClientSettings webClientSettings)
     {
         // 1. Indicate dependency injection container to Inject the UserManager.
         this._userManager = userManager;
@@ -77,16 +80,17 @@ public class AuthenticationController : ControllerBase
         this._emailService = emailService;
         // 16. Inject email activation code repository.
         this._emailConfirmationCodeRepository = emailActivationCodeRepository;
+        // 17. Inject web client settings.
+        this._webClientSettings = webClientSettings;
     }
     #region Endpoints
 
     /// <summary>
     /// Sign up a new non-admin user.
-    /// Only users with role 'Admin' or 'Doctor' can create new users.
     /// </summary>
     /// <param name="dto">JSON that includes all information necessary to create an account</param>
     /// <returns></returns>
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin},{ApiRoles.Manager}")] // Requires a JWT that has the role Admin or Manager.
+    // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin},{ApiRoles.Manager}")] // Requires a JWT that has the role Admin or Manager.
     [HttpPost("signup")]
     public async Task<ActionResult> Signup(SignupRequest dto)
     {
@@ -650,7 +654,7 @@ public class AuthenticationController : ControllerBase
         // 4. Send the new password on an email.
         this._logger.LogInformation("Attempting to send code to new user.");
         string emailSubject = $"puebla - Se necesita activar la cuenta";
-        string emailLink = $"{ApiRouteSettings.Server}/{ApiControllerRoutes.Authentication}/confirm/{code.Code}";
+        string emailLink = $"{this._webClientSettings.Host}/auth/confirm/{code.Code}";
         string emailHtmlContent = $"puebla - Activación de cuenta <br><br>Para activar el usuario <i>{user.UserName}</i> haga click en el siguiente enlace:<br><br><a href='{emailLink}'>{emailLink}</a><br><br>Este es un mensaje generado automáticamente. Por favor, no respondas a este correo electrónico.";
         await this._emailService.SendEmail(user.Email, emailSubject, emailHtmlContent);
 
