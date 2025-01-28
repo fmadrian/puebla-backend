@@ -737,12 +737,12 @@ public class AuthenticationController : ControllerBase
         return new Response<AuthResponse>()
         {
             Result = true,
-            // Object is a generic object that contains some user's information.
             Object = new()
             {
                 // Add personal information.
                 FirstName = user.FirstName,
-                LastName = user.LastName
+                LastName = user.LastName,
+                Email = user.Email!
             }
         };
     }
