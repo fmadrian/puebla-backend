@@ -16,7 +16,7 @@ namespace PueblaApi.Helpers;
 **/
 public class TokenHelper
 {
-    public static async Task<Response<AuthResponse>> GenerateJWTToken(ApplicationUser user, JwtConfiguration _jwtConfig, ApplicationDbContext _context,
+    public static async Task<string> GenerateJWTToken(ApplicationUser user, JwtConfiguration _jwtConfig, ApplicationDbContext _context,
                                                                         UserManager<ApplicationUser> _userManager, RoleManager<IdentityRole> _roleManager)
     {
 
@@ -49,19 +49,8 @@ public class TokenHelper
 
         // 7. Create a Security Token using the descriptor.
         SecurityToken securityToken = jwtTokenHandler.CreateToken(tokenDescriptor);
-        // 8. Create a JWT token using the Security Token.
-        string jwtToken = jwtTokenHandler.WriteToken(securityToken);
-
-        // 11. Return the token.
-        return new Response<AuthResponse>()
-        {
-            Result = true,
-            Object = new()
-            {
-                Token = jwtToken,
-                //RefreshToken = refreshToken.Token,
-            }
-        };
+        // 8. Create a JWT token using the Security Token and return it.
+        return jwtTokenHandler.WriteToken(securityToken);
     }
 
     // Get all the claims that correspond to a user

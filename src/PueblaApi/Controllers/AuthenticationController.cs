@@ -112,7 +112,7 @@ public class AuthenticationController : ControllerBase
                 FirstName = dto.FirstName.ToUpper(),
                 LastName = dto.LastName.ToUpper(),
                 IsEnabled = true,
-                EmailConfirmed = false,
+                EmailConfirmed = false
 
             };
             var userWasCreated = await this._userManager.CreateAsync(newUser, dto.Password); // Creates user (password is encrypted in the function)
@@ -267,7 +267,7 @@ public class AuthenticationController : ControllerBase
     /// <param name="dto">Contains the information to change and the current password.</param>
     /// <returns></returns>
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)] // Requires a JWT.
-    [HttpPut("update")]
+    [HttpPut("users/me")]
     public async Task<ActionResult> Update([FromBody] UpdateUserRequest dto)
     {
         try
@@ -703,6 +703,7 @@ public class AuthenticationController : ControllerBase
             string username = user.UserName;
 
             // 3. Delete the user.
+            // TODO: Add non-admin or manager user trying to delete other user check.
             await this._userManager.DeleteAsync(user);
 
             // 5. Return response.
@@ -723,19 +724,27 @@ public class AuthenticationController : ControllerBase
     #region Helpers
     private async Task<Response<AuthResponse>> GenerateSuccessfulAuthenticationResponse(ApplicationUser user)
     {
-        // IMPORTANT: Response comes from the HttpContext from the incoming HTTP request.
+        // IMPORTANT: Response (the object "Response.Headers", not the class) comes from the HttpContext 
+        // from the incoming HTTP request.
 
         // Generate a JWT, refresh token, and add the roles to the response object.
-        Response<AuthResponse> response = await TokenHelper.GenerateJWTToken(user, _jwtConfiguration,
-        _context, _userManager, _roleManager);
+        string jwt = await TokenHelper.GenerateJWTToken(user, _jwtConfiguration,
+         _context, _userManager, _roleManager);
+
         // Add JWT to response's headers.
-        Response.Headers.Append("Authorization", $"Bearer {response.Object.Token}");
-        // Add roles and personal information.
-        response.Object.Roles = (await this._userManager.GetRolesAsync(user)).ToList();
-        // TODO: Remove JWT from response object.
-        response.Object.FirstName = user.FirstName;
-        response.Object.LastName = user.LastName;
-        return response;
+        Response.Headers.Append("Authorization", $"Bearer {jwt}");
+
+        return new Response<AuthResponse>()
+        {
+            Result = true,
+            // Object is a generic object that contains some user's information.
+            Object = new()
+            {
+                // Add personal information.
+                FirstName = user.FirstName,
+                LastName = user.LastName
+            }
+        };
     }
     private Response<AuthResponse> GenerateUnsuccessfulAuthenticationResponse(string error)
     {
