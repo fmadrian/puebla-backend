@@ -96,7 +96,7 @@ public class AuthenticationController : ControllerBase
             // 1. Check if the username or national id already exists.
             var userExists = await this._userManager.FindByNameAsync(dto.Username) ?? await this._userManager.FindByEmailAsync(dto.Email);
             if (userExists != null) // Assigns 'null' if the user doesn't exist.
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Nombre de usuario o correo electrónico no están disponibles."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Nombre de usuario o correo electrónico no están disponibles."));
 
             // 2. Create new user. 
             ApplicationUser newUser = new ApplicationUser()
@@ -115,14 +115,14 @@ public class AuthenticationController : ControllerBase
             var userWasCreated = await this._userManager.CreateAsync(newUser, dto.Password); // Creates user (password is encrypted in the function)
             if (!userWasCreated.Succeeded)
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse(userWasCreated.Errors.Select(e => e.Description).ToList()));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse(userWasCreated.Errors.Select(e => e.Description).ToList()));
             }
             // 3. Add ROLES to new user.
             // 3.1. Verify the role exists
             IdentityRole roleToBeAdded = await this._roleManager.FindByNameAsync(dto.Role);
             if (roleToBeAdded == null)
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Rol no existe."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Rol no existe."));
             }
             // 3.2. Add role.
             IdentityResult roleWasAdded = await this._userManager.AddToRoleAsync(newUser, dto.Role);
@@ -166,23 +166,23 @@ public class AuthenticationController : ControllerBase
             // 1. Search user by username or email.
             ApplicationUser user = await this._userManager.FindByNameAsync(dto.Name) ?? await this._userManager.FindByEmailAsync(dto.Name);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Usuario no existe"));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Usuario no existe"));
 
             // 2. If the user exists, check the password.
             bool passwordIsCorrect = await this._userManager.CheckPasswordAsync(user, dto.Password);
             if (!passwordIsCorrect)
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Contraseña o usuario incorrecto."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Contraseña o usuario incorrecto."));
             }
             // 3. If the user is not enabled, we don't allow it to login.
             if (!user.IsEnabled)
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {user.UserName} fue desactivado."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Usuario {user.UserName} fue desactivado."));
             }
             // 4. Check email is enabled
             if (!(await this._userManager.IsEmailConfirmedAsync(user)))
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {user.UserName} debe activar el correo electrónico."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Usuario {user.UserName} debe activar el correo electrónico."));
             }
             // 4. If the user exists, we generate the token and return it.
             return Ok(await this.GenerateSuccessfulAuthenticationResponse(user));
@@ -208,12 +208,12 @@ public class AuthenticationController : ControllerBase
             // 1. Search the username and email match.
             ApplicationUser user = await this._userManager.FindByNameAsync(dto.Username);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {dto.Username} no existe."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Usuario {dto.Username} no existe."));
             if (!user.IsEnabled)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {dto.Username} fue desactivado."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Usuario {dto.Username} fue desactivado."));
             // 2. Check email provided matches email linked to account.
             if (user.Email != dto.Email)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Correo no corresponde a usuario."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Correo no corresponde a usuario."));
 
             // 3. If the email hasn't been activated/confirmed, send a new confirmation code.
             // Otherwise, send a new password
@@ -272,12 +272,12 @@ public class AuthenticationController : ControllerBase
             // 1. Get user using id obtained from token
             ApplicationUser user = await TokenHelper.GetUserFromJWTClaim(HttpContext.User.Identity as ClaimsIdentity, _userManager);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Token inválido. Vuelva a iniciar sesión."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Token inválido. Vuelva a iniciar sesión."));
 
             // 2. If the user exists, check the current password.
             bool passwordIsCorrect = await this._userManager.CheckPasswordAsync(user, dto.CurrentPassword);
             if (!passwordIsCorrect)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Contraseña actual es incorrecta."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Contraseña actual es incorrecta."));
 
             // 3. Update user's information.
             // If the new information matches the old one, don't change it.
@@ -291,7 +291,7 @@ public class AuthenticationController : ControllerBase
             {
                 // 3.4. Check email availability.
                 if (await this._userManager.FindByEmailAsync(dto.Email) != null)
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Correo {dto.Email} ya está en uso."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse($"Correo {dto.Email} ya está en uso."));
                 else
                 {
                     user.Email = dto.Email;
@@ -304,7 +304,7 @@ public class AuthenticationController : ControllerBase
             {
                 // 3.5. Check username availability.
                 if (await this._userManager.FindByNameAsync(dto.Username) != null)
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Nombre de usuario {dto.Username} ya está en uso."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse($"Nombre de usuario {dto.Username} ya está en uso."));
                 else
                 {
                     user.UserName = dto.Username;
@@ -316,7 +316,7 @@ public class AuthenticationController : ControllerBase
                 var passwordChangeResult = await this._userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.Password);
                 if (!passwordChangeResult.Succeeded)
                     // Fails the process and it doesn't let it continue.
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse(
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse(
                         passwordChangeResult.Errors.Select(e => e.Description).ToList()
                 ));
             }
@@ -350,10 +350,10 @@ public class AuthenticationController : ControllerBase
             // 1. Get user using id obtained from path parameter
             ApplicationUser user = await this._userManager.FindByIdAsync(userId);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No existe un usuario con este ID."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No existe un usuario con este ID."));
             // 2. Don't allow admin user to be updated through this endpoint.
             if (user.UserName == "admin")
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No se puede modificar el usuario administrador de esta manera."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No se puede modificar el usuario administrador de esta manera."));
 
             // 3. Update user's information.
             // If the new information matches the old one, don't change it.
@@ -367,7 +367,7 @@ public class AuthenticationController : ControllerBase
             {
                 // 3.4. Check email availability.
                 if (await this._userManager.FindByEmailAsync(dto.Email) != null)
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Correo {dto.Email} ya está en uso."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse($"Correo {dto.Email} ya está en uso."));
                 else
                 {
                     user.Email = dto.Email;
@@ -379,7 +379,7 @@ public class AuthenticationController : ControllerBase
             {
                 // 3.5. Check username availability.
                 if (await this._userManager.FindByNameAsync(dto.Username) != null)
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Nombre de usuario {dto.Username} ya está en uso."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse($"Nombre de usuario {dto.Username} ya está en uso."));
                 else
                     user.UserName = dto.Username;
             }
@@ -392,7 +392,7 @@ public class AuthenticationController : ControllerBase
                     passwordChangeResult = await this._userManager.AddPasswordAsync(user, dto.Password);
                 if (!passwordChangeResult.Succeeded)
                     // Fails the process and it doesn't let it continue.
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse(
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse(
                         passwordChangeResult.Errors.Select(e => e.Description).ToList()
                 ));
             }
@@ -415,7 +415,7 @@ public class AuthenticationController : ControllerBase
                 }
                 else
                 {
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Rol no existe."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse("Rol no existe."));
                 }
             }
 
@@ -547,7 +547,7 @@ public class AuthenticationController : ControllerBase
             // 1. Get user using id obtained from token
             ApplicationUser user = await TokenHelper.GetUserFromJWTClaim(HttpContext.User.Identity as ClaimsIdentity, _userManager);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Token inválido. Vuelva a iniciar sesión."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Token inválido. Vuelva a iniciar sesión."));
 
             // 2. Get roles and return information.
             return Ok(ResponseHelper.SuccessfulResponse<UserResponse>(new()
@@ -580,11 +580,11 @@ public class AuthenticationController : ControllerBase
             // 1. Get user using id obtained from path parameter
             ApplicationUser user = await this._userManager.FindByIdAsync(userId);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No existe un usuario con este ID."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No existe un usuario con este ID."));
 
             // 2. Don't allow admin user to be deactivated.
             if (user.UserName == "admin")
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No se puede desactivar el usuario administrador."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No se puede desactivar el usuario administrador."));
 
             // 3. Deactivate/reactivate account and save changes.
             user.IsEnabled = !user.IsEnabled;
@@ -613,7 +613,7 @@ public class AuthenticationController : ControllerBase
 
             if (DateTimeOffset.UtcNow.CompareTo(activationCode.ExpirationDate) > 0)
             {
-                return Unauthorized(this.GenerateUnsuccessfulAuthenticationResponse("Código ha expirado, recupera la cuenta para obtener uno nuevo"));
+                return Unauthorized(ResponseHelper.UnsuccessfulResponse("Código ha expirado, recupera la cuenta para obtener uno nuevo"));
             }
 
             // 2. Change state of the account / activate email.
@@ -747,16 +747,6 @@ public class AuthenticationController : ControllerBase
                 Email = user.Email!
             }
         };
-    }
-    private Response<AuthResponse> GenerateUnsuccessfulAuthenticationResponse(string error)
-    {
-        return ResponseHelper.UnsuccessfulResponse<AuthResponse>(new List<string>(){
-            error
-        });
-    }
-    private Response<AuthResponse> GenerateUnsuccessfulAuthenticationResponse(List<string> errors)
-    {
-        return ResponseHelper.UnsuccessfulResponse<AuthResponse>(errors);
     }
     #endregion
 };
