@@ -685,28 +685,33 @@ public class AuthenticationController : ControllerBase
         }
     }
 
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [HttpDelete("users/{userId}")]
     public async Task<ActionResult> Delete(string userId)
     {
         try
         {
             // 1. Get user using id obtained from path parameter
-            ApplicationUser user = await this._userManager.FindByIdAsync(userId);
-            if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No existe un usuario con este ID."));
+            ApplicationUser deletedUser = await this._userManager.FindByIdAsync(userId);
+            if (deletedUser == null)
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No existe un usuario con este ID."));
 
             // 2. Don't allow admin user to be deleted.
-            if (user.UserName == "admin")
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No se puede desactivar el usuario administrador."));
+            if (deletedUser.UserName == "admin")
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No se puede desactivar el usuario administrador."));
 
-            string username = user.UserName;
+            // Only administrator users can delete any user. 
+            // The rest of users can only delete themselves.
+            ApplicationUser user = await TokenHelper.GetUserFromJWTClaim(HttpContext.User.Identity as ClaimsIdentity, _userManager);
+            if (!await this._userManager.IsInRoleAsync(user, "admin") && user.Id != deletedUser.Id)
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Solo puedes eliminar tu usuario"));
+
+            string username = deletedUser.UserName;
 
             // 3. Delete the user.
-            // TODO: Add non-admin or manager user trying to delete other user check.
-            await this._userManager.DeleteAsync(user);
+            await this._userManager.DeleteAsync(deletedUser);
 
-            // 5. Return response.
+            // 4. Return response.
             return Ok(ResponseHelper.SuccessfulResponse($"Cuenta {username} fue eliminada."));
         }
         catch (Exception e)
