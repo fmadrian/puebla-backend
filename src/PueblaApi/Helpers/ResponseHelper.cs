@@ -35,7 +35,7 @@ public class ResponseHelper
     {
         return new Response<T>()
         {
-            Result = true,
+            Result = false,
             Errors = errors
         };
     }
@@ -43,7 +43,7 @@ public class ResponseHelper
     {
         return new Response<string>()
         {
-            Result = true,
+            Result = false,
             Errors = errors,
             Message = msg
         };
