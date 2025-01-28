@@ -112,7 +112,8 @@ builder.Services.AddCors(options =>
             //policy.WithOrigins("http://localhost:4200")
             policy.AllowAnyOrigin()
                 .AllowAnyHeader() // Allow all headers.
-                .AllowAnyMethod();
+                .AllowAnyMethod()
+                .WithExposedHeaders("Authorization");
             // .WithMethods("OPTIONS", "POST", "PUT", "DELETE", "GET"); // HTTP methods allowed.
         });
 });
