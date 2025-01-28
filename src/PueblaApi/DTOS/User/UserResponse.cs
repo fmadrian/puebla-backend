@@ -1,4 +1,4 @@
-namespace IPacientesApi.Dtos.User;
+namespace PueblaApi.Dtos.User;
 
 public class UserResponse
 {

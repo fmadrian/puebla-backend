@@ -1,10 +1,7 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text.RegularExpressions;
+﻿using System.Security.Claims;
 using PueblaApi.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using PueblaApi.Database;
@@ -15,12 +12,11 @@ using SodaAPI.RequestHelpers;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using PueblaApi.DTOS.Auth;
-using IPacientesApi.Dtos.User;
+using PueblaApi.Dtos.User;
 using PueblaApi.DTOS.Base;
 using PasswordGenerator;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using PueblaApi.Repositories.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 
 
 namespace PueblaApi.Controllers;
@@ -112,7 +108,8 @@ public class AuthenticationController : ControllerBase
                 FirstName = dto.FirstName.ToUpper(),
                 LastName = dto.LastName.ToUpper(),
                 IsEnabled = true,
-                EmailConfirmed = false
+                // EmailConfirmed = false 
+                EmailConfirmed = true// TODO: Replace this line for the one above.
 
             };
             var userWasCreated = await this._userManager.CreateAsync(newUser, dto.Password); // Creates user (password is encrypted in the function)
@@ -139,9 +136,9 @@ public class AuthenticationController : ControllerBase
             // 4. Save changes related to user.
             await this._context.SaveChangesAsync();
             // 5. Generate email activation code.
-            await this.GenerateEmailConfirmationCode(newUser);
+            //await this.GenerateEmailConfirmationCode(newUser);
             // 5. Return URL where we can retrieve user's information and the user information.
-            return CreatedAtAction(nameof(GetUser), new { id = newUser.Id }, ResponseHelper.SuccessfulResponse<UserResponse>(
+            return CreatedAtAction(nameof(GetUser), new { userId = newUser.Id }, ResponseHelper.SuccessfulResponse<UserResponse>(
                 new UserResponse()
                 {
                     Id = newUser.Id
@@ -328,7 +325,7 @@ public class AuthenticationController : ControllerBase
             // 7. Send email confirmation after the changes have been saved.
             if (!user.EmailConfirmed)
                 await this.GenerateEmailConfirmationCode(user);
-            // 8. Issue new JWT and refresh token.
+            // 8. Return response.
             return Ok(await this.GenerateSuccessfulAuthenticationResponse(user));
         }
         catch (Exception e)

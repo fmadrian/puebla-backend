@@ -1,6 +1,6 @@
 using PueblaApi.DTOS.Base;
 
-namespace IPacientesApi.Dtos.User;
+namespace PueblaApi.Dtos.User;
 
 public class SearchUserRequest : SearchRequest
 {
