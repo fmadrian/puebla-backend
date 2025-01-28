@@ -23,8 +23,8 @@ public class ApplicationUser : IdentityUser
     /// <summary>
     /// National ID. Unique for every user.
     /// </summary>
-    [Required]
-    public string NationalId { set; get; }
+    // [Required]
+    // public string NationalId { set; get; }
     [Required]
     public bool IsEnabled { set; get; }
 

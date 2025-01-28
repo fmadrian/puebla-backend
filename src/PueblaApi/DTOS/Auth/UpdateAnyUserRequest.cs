@@ -16,7 +16,7 @@ public class UpdateAnyUserRequest
     // New last name.
     public string? LastName { set; get; }
     // New national ID.
-    public string? NationalId { set; get; }
+    // public string? NationalId { set; get; }
     // New role.
     public string? Role { set; get; }
 #nullable disable

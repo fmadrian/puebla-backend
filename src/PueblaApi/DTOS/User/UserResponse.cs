@@ -1,4 +1,4 @@
-namespace IPacientesApi.Dtos.User;
+namespace PueblaApi.Dtos.User;
 
 public class UserResponse
 {
@@ -6,7 +6,7 @@ public class UserResponse
     public string UserName { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
-    public string NationalId { get; set; }
+    // public string NationalId { get; set; }
     public string Email { get; set; }
     public List<string> Roles { get; set; }
     public bool IsEnabled { get; set; }

@@ -1,10 +1,7 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text.RegularExpressions;
+﻿using System.Security.Claims;
 using PueblaApi.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using PueblaApi.Database;
@@ -15,12 +12,11 @@ using SodaAPI.RequestHelpers;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using PueblaApi.DTOS.Auth;
-using IPacientesApi.Dtos.User;
+using PueblaApi.Dtos.User;
 using PueblaApi.DTOS.Base;
 using PasswordGenerator;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using PueblaApi.Repositories.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 
 
 namespace PueblaApi.Controllers;
@@ -47,6 +43,8 @@ public class AuthenticationController : ControllerBase
     private readonly IEmailService _emailService;
     // 16. Inject email activation code repository.
     private readonly IEmailConfirmationCodeRepository _emailConfirmationCodeRepository;
+    // 17. Inject web client settings.
+    private readonly WebClientSettings _webClientSettings;
 
     public AuthenticationController(
         UserManager<ApplicationUser> userManager,
@@ -57,7 +55,8 @@ public class AuthenticationController : ControllerBase
         ILogger<AuthenticationController> logger,
         JwtConfiguration jwtConfiguration,
         IEmailService emailService,
-        IEmailConfirmationCodeRepository emailActivationCodeRepository)
+        IEmailConfirmationCodeRepository emailActivationCodeRepository,
+        WebClientSettings webClientSettings)
     {
         // 1. Indicate dependency injection container to Inject the UserManager.
         this._userManager = userManager;
@@ -75,18 +74,19 @@ public class AuthenticationController : ControllerBase
         this._jwtConfiguration = jwtConfiguration;
         // 15. Inject email service.
         this._emailService = emailService;
-         // 16. Inject email activation code repository.
+        // 16. Inject email activation code repository.
         this._emailConfirmationCodeRepository = emailActivationCodeRepository;
-}
+        // 17. Inject web client settings.
+        this._webClientSettings = webClientSettings;
+    }
     #region Endpoints
 
     /// <summary>
     /// Sign up a new non-admin user.
-    /// Only users with role 'Admin' or 'Doctor' can create new users.
     /// </summary>
     /// <param name="dto">JSON that includes all information necessary to create an account</param>
     /// <returns></returns>
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin},{ApiRoles.Manager}")] // Requires a JWT that has the role Admin or Manager.
+    // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin},{ApiRoles.Manager}")] // Requires a JWT that has the role Admin or Manager.
     [HttpPost("signup")]
     public async Task<ActionResult> Signup(SignupRequest dto)
     {
@@ -96,7 +96,7 @@ public class AuthenticationController : ControllerBase
             // 1. Check if the username or national id already exists.
             var userExists = await this._userManager.FindByNameAsync(dto.Username) ?? await this._userManager.FindByEmailAsync(dto.Email);
             if (userExists != null) // Assigns 'null' if the user doesn't exist.
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Nombre de usuario o correo electrónico no están disponibles."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Nombre de usuario o correo electrónico no están disponibles."));
 
             // 2. Create new user. 
             ApplicationUser newUser = new ApplicationUser()
@@ -104,24 +104,25 @@ public class AuthenticationController : ControllerBase
                 UserName = dto.Username.ToLower(),
                 Email = dto.Email.ToLower(),
                 // Remove anything that is not a letter or number.
-                NationalId = Regex.Replace(dto.NationalId, @"[^A-Za-z0-9]", "", RegexOptions.IgnoreCase),
+                //NationalId = Regex.Replace(dto.NationalId, @"[^A-Za-z0-9]", "", RegexOptions.IgnoreCase),
                 FirstName = dto.FirstName.ToUpper(),
                 LastName = dto.LastName.ToUpper(),
                 IsEnabled = true,
-                EmailConfirmed = false,
-                
+                // EmailConfirmed = false 
+                EmailConfirmed = true// TODO: Replace this line for the one above.
+
             };
             var userWasCreated = await this._userManager.CreateAsync(newUser, dto.Password); // Creates user (password is encrypted in the function)
             if (!userWasCreated.Succeeded)
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse(userWasCreated.Errors.Select(e => e.Description).ToList()));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse(userWasCreated.Errors.Select(e => e.Description).ToList()));
             }
             // 3. Add ROLES to new user.
             // 3.1. Verify the role exists
             IdentityRole roleToBeAdded = await this._roleManager.FindByNameAsync(dto.Role);
             if (roleToBeAdded == null)
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Rol no existe."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Rol no existe."));
             }
             // 3.2. Add role.
             IdentityResult roleWasAdded = await this._userManager.AddToRoleAsync(newUser, dto.Role);
@@ -135,9 +136,9 @@ public class AuthenticationController : ControllerBase
             // 4. Save changes related to user.
             await this._context.SaveChangesAsync();
             // 5. Generate email activation code.
-            await this.GenerateEmailConfirmationCode(newUser);
+            //await this.GenerateEmailConfirmationCode(newUser);
             // 5. Return URL where we can retrieve user's information and the user information.
-            return CreatedAtAction(nameof(GetUser), new { id = newUser.Id }, ResponseHelper.SuccessfulResponse<UserResponse>(
+            return CreatedAtAction(nameof(GetUser), new { userId = newUser.Id }, ResponseHelper.SuccessfulResponse<UserResponse>(
                 new UserResponse()
                 {
                     Id = newUser.Id
@@ -165,23 +166,23 @@ public class AuthenticationController : ControllerBase
             // 1. Search user by username or email.
             ApplicationUser user = await this._userManager.FindByNameAsync(dto.Name) ?? await this._userManager.FindByEmailAsync(dto.Name);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Usuario no existe"));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Usuario no existe"));
 
             // 2. If the user exists, check the password.
             bool passwordIsCorrect = await this._userManager.CheckPasswordAsync(user, dto.Password);
             if (!passwordIsCorrect)
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Contraseña o usuario incorrecto."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Contraseña o usuario incorrecto."));
             }
             // 3. If the user is not enabled, we don't allow it to login.
             if (!user.IsEnabled)
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {user.UserName} fue desactivado."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Usuario {user.UserName} fue desactivado."));
             }
             // 4. Check email is enabled
-            if(!(await this._userManager.IsEmailConfirmedAsync(user)))
+            if (!(await this._userManager.IsEmailConfirmedAsync(user)))
             {
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {user.UserName} debe activar el correo electrónico."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Usuario {user.UserName} debe activar el correo electrónico."));
             }
             // 4. If the user exists, we generate the token and return it.
             return Ok(await this.GenerateSuccessfulAuthenticationResponse(user));
@@ -197,8 +198,8 @@ public class AuthenticationController : ControllerBase
     /// </summary>
     /// <param name="dto">JSON that contains username and email used to create the account</param>
     /// <returns></returns>
-    [HttpPut("recover-account")]
-    public async Task<ActionResult> RecoverAccount([FromBody] RecoverPasswordRequest dto)
+    [HttpPut("recover-password")]
+    public async Task<ActionResult> RecoverPassword([FromBody] RecoverPasswordRequest dto)
     {
         try
         {
@@ -207,21 +208,23 @@ public class AuthenticationController : ControllerBase
             // 1. Search the username and email match.
             ApplicationUser user = await this._userManager.FindByNameAsync(dto.Username);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {dto.Username} no existe."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Usuario {dto.Username} no existe."));
             if (!user.IsEnabled)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Usuario {dto.Username} fue desactivado."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Usuario {dto.Username} fue desactivado."));
             // 2. Check email provided matches email linked to account.
             if (user.Email != dto.Email)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Correo no corresponde a usuario."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse($"Correo no corresponde a usuario."));
 
             // 3. If the email hasn't been activated/confirmed, send a new confirmation code.
             // Otherwise, send a new password
-            if (!(await this._userManager.IsEmailConfirmedAsync(user))) {
+            if (!(await this._userManager.IsEmailConfirmedAsync(user)))
+            {
                 this._logger.LogInformation("Attempting to send a new email confirmation code to the user.");
                 await this.GenerateEmailConfirmationCode(user);
                 return Ok(ResponseHelper.SuccessfulResponse($"Correo de confirmación enviado a {user.Email}"));
             }
-            else {
+            else
+            {
                 // 4. Create a new password.
                 this._logger.LogInformation("Creating new password...");
                 string newPassword = new Password(passwordLength).IncludeNumeric().IncludeLowercase().IncludeUppercase().IncludeSpecial("#_!=").Next().ToString();
@@ -261,7 +264,7 @@ public class AuthenticationController : ControllerBase
     /// <param name="dto">Contains the information to change and the current password.</param>
     /// <returns></returns>
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)] // Requires a JWT.
-    [HttpPut("update")]
+    [HttpPut("users/me")]
     public async Task<ActionResult> Update([FromBody] UpdateUserRequest dto)
     {
         try
@@ -269,12 +272,12 @@ public class AuthenticationController : ControllerBase
             // 1. Get user using id obtained from token
             ApplicationUser user = await TokenHelper.GetUserFromJWTClaim(HttpContext.User.Identity as ClaimsIdentity, _userManager);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Token inválido. Vuelva a iniciar sesión."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Token inválido. Vuelva a iniciar sesión."));
 
             // 2. If the user exists, check the current password.
             bool passwordIsCorrect = await this._userManager.CheckPasswordAsync(user, dto.CurrentPassword);
             if (!passwordIsCorrect)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Contraseña actual es incorrecta."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Contraseña actual es incorrecta."));
 
             // 3. Update user's information.
             // If the new information matches the old one, don't change it.
@@ -282,13 +285,13 @@ public class AuthenticationController : ControllerBase
                 user.FirstName = dto.FirstName.ToUpper();
             if (!dto.LastName.IsNullOrEmpty() && user.LastName != dto.LastName)
                 user.LastName = dto.LastName.ToUpper();
-            if (!dto.NationalId.IsNullOrEmpty() && user.NationalId != dto.NationalId)
-                user.NationalId = Regex.Replace(dto.NationalId, @"[^A-Za-z0-9]", "", RegexOptions.IgnoreCase);
+            // if (!dto.NationalId.IsNullOrEmpty() && user.NationalId != dto.NationalId)
+            //    user.NationalId = Regex.Replace(dto.NationalId, @"[^A-Za-z0-9]", "", RegexOptions.IgnoreCase);
             if (!dto.Email.IsNullOrEmpty() && user.Email != dto.Email)
             {
                 // 3.4. Check email availability.
                 if (await this._userManager.FindByEmailAsync(dto.Email) != null)
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Correo {dto.Email} ya está en uso."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse($"Correo {dto.Email} ya está en uso."));
                 else
                 {
                     user.Email = dto.Email;
@@ -301,7 +304,7 @@ public class AuthenticationController : ControllerBase
             {
                 // 3.5. Check username availability.
                 if (await this._userManager.FindByNameAsync(dto.Username) != null)
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Nombre de usuario {dto.Username} ya está en uso."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse($"Nombre de usuario {dto.Username} ya está en uso."));
                 else
                 {
                     user.UserName = dto.Username;
@@ -313,7 +316,7 @@ public class AuthenticationController : ControllerBase
                 var passwordChangeResult = await this._userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.Password);
                 if (!passwordChangeResult.Succeeded)
                     // Fails the process and it doesn't let it continue.
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse(
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse(
                         passwordChangeResult.Errors.Select(e => e.Description).ToList()
                 ));
             }
@@ -321,8 +324,8 @@ public class AuthenticationController : ControllerBase
             await this._userManager.UpdateAsync(user);
             // 7. Send email confirmation after the changes have been saved.
             if (!user.EmailConfirmed)
-               await this.GenerateEmailConfirmationCode(user);
-            // 8. Issue new JWT and refresh token.
+                await this.GenerateEmailConfirmationCode(user);
+            // 8. Return response.
             return Ok(await this.GenerateSuccessfulAuthenticationResponse(user));
         }
         catch (Exception e)
@@ -347,10 +350,10 @@ public class AuthenticationController : ControllerBase
             // 1. Get user using id obtained from path parameter
             ApplicationUser user = await this._userManager.FindByIdAsync(userId);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No existe un usuario con este ID."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No existe un usuario con este ID."));
             // 2. Don't allow admin user to be updated through this endpoint.
             if (user.UserName == "admin")
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No se puede modificar el usuario administrador de esta manera."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No se puede modificar el usuario administrador de esta manera."));
 
             // 3. Update user's information.
             // If the new information matches the old one, don't change it.
@@ -358,13 +361,13 @@ public class AuthenticationController : ControllerBase
                 user.FirstName = dto.FirstName;
             if (!dto.LastName.IsNullOrEmpty() && user.LastName != dto.LastName)
                 user.LastName = dto.LastName;
-            if (!dto.NationalId.IsNullOrEmpty() && user.NationalId != dto.NationalId)
-                user.NationalId = dto.NationalId;
+            //if (!dto.NationalId.IsNullOrEmpty() && user.NationalId != dto.NationalId)
+            //    user.NationalId = dto.NationalId;
             if (!dto.Email.IsNullOrEmpty() && user.Email != dto.Email)
             {
                 // 3.4. Check email availability.
                 if (await this._userManager.FindByEmailAsync(dto.Email) != null)
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Correo {dto.Email} ya está en uso."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse($"Correo {dto.Email} ya está en uso."));
                 else
                 {
                     user.Email = dto.Email;
@@ -376,7 +379,7 @@ public class AuthenticationController : ControllerBase
             {
                 // 3.5. Check username availability.
                 if (await this._userManager.FindByNameAsync(dto.Username) != null)
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse($"Nombre de usuario {dto.Username} ya está en uso."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse($"Nombre de usuario {dto.Username} ya está en uso."));
                 else
                     user.UserName = dto.Username;
             }
@@ -389,7 +392,7 @@ public class AuthenticationController : ControllerBase
                     passwordChangeResult = await this._userManager.AddPasswordAsync(user, dto.Password);
                 if (!passwordChangeResult.Succeeded)
                     // Fails the process and it doesn't let it continue.
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse(
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse(
                         passwordChangeResult.Errors.Select(e => e.Description).ToList()
                 ));
             }
@@ -412,7 +415,7 @@ public class AuthenticationController : ControllerBase
                 }
                 else
                 {
-                    return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Rol no existe."));
+                    return BadRequest(ResponseHelper.UnsuccessfulResponse("Rol no existe."));
                 }
             }
 
@@ -449,7 +452,7 @@ public class AuthenticationController : ControllerBase
                 UserName = user.UserName,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                NationalId = user.NationalId,
+                //NationalId = user.NationalId,
                 Email = user.Email,
                 Roles = (await this._userManager.GetRolesAsync(user)).ToList(),
                 IsEnabled = user.IsEnabled
@@ -472,8 +475,8 @@ public class AuthenticationController : ControllerBase
             if (!request.Q.IsNullOrEmpty())
                 query = query.Where(u => (EF.Functions.ILike(u.UserName, $"%{request.Q}%") ||
                                         EF.Functions.ILike(u.FirstName, $"%{request.Q}%") ||
-                                        EF.Functions.ILike(u.LastName, $"%{request.Q}%") ||
-                                        EF.Functions.ILike(u.NationalId, $"%{request.Q}%")) &&
+                                        EF.Functions.ILike(u.LastName, $"%{request.Q}%")) &&
+                                        // || EF.Functions.ILike(u.NationalId, $"%{request.Q}%")) &&
                                         u.IsEnabled == request.IsEnabled
                 );
             else
@@ -486,7 +489,7 @@ public class AuthenticationController : ControllerBase
                 "username" => x => x.UserName,
                 "firstname" => x => x.FirstName,
                 "lastname" => x => x.LastName,
-                "nationalid" => x => x.NationalId,
+                //"nationalid" => x => x.NationalId,
                 _ => x => x.Id // Default.
             };
             // 3. Apply sorting order (descending or ascending)
@@ -507,7 +510,7 @@ public class AuthenticationController : ControllerBase
                     Email = u.Email,
                     FirstName = u.FirstName,
                     LastName = u.LastName,
-                    NationalId = u.NationalId,
+                    //NationalId = u.NationalId,
                     Roles = (await this._userManager.GetRolesAsync(u)).ToList(),
                     IsEnabled = u.IsEnabled
                 });
@@ -544,7 +547,7 @@ public class AuthenticationController : ControllerBase
             // 1. Get user using id obtained from token
             ApplicationUser user = await TokenHelper.GetUserFromJWTClaim(HttpContext.User.Identity as ClaimsIdentity, _userManager);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("Token inválido. Vuelva a iniciar sesión."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Token inválido. Vuelva a iniciar sesión."));
 
             // 2. Get roles and return information.
             return Ok(ResponseHelper.SuccessfulResponse<UserResponse>(new()
@@ -553,7 +556,7 @@ public class AuthenticationController : ControllerBase
                 UserName = user.UserName,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                NationalId = user.NationalId,
+                //NationalId = user.NationalId,
                 Email = user.Email,
                 Roles = (await this._userManager.GetRolesAsync(user)).ToList(),
             }));
@@ -577,11 +580,11 @@ public class AuthenticationController : ControllerBase
             // 1. Get user using id obtained from path parameter
             ApplicationUser user = await this._userManager.FindByIdAsync(userId);
             if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No existe un usuario con este ID."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No existe un usuario con este ID."));
 
             // 2. Don't allow admin user to be deactivated.
             if (user.UserName == "admin")
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No se puede desactivar el usuario administrador."));
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No se puede desactivar el usuario administrador."));
 
             // 3. Deactivate/reactivate account and save changes.
             user.IsEnabled = !user.IsEnabled;
@@ -595,7 +598,7 @@ public class AuthenticationController : ControllerBase
             return ErrorHelper.Internal(this._logger, e.StackTrace);
         }
     }
-    
+
     [HttpGet("confirm/{code}")]
     public async Task<ActionResult> ConfirmEmail(Guid code)
     {
@@ -603,14 +606,14 @@ public class AuthenticationController : ControllerBase
         {
             // 1. Search token.
             EmailConfirmationCode activationCode = await this._emailConfirmationCodeRepository.GetByCode(code);
-            if(activationCode == null)
+            if (activationCode == null)
                 return NotFound();
-            
+
             ApplicationUser user = activationCode.User;
 
-            if(DateTimeOffset.UtcNow.CompareTo(activationCode.ExpirationDate) > 0)
+            if (DateTimeOffset.UtcNow.CompareTo(activationCode.ExpirationDate) > 0)
             {
-                return Unauthorized(this.GenerateUnsuccessfulAuthenticationResponse("Código ha expirado, recupera la cuenta para obtener uno nuevo"));
+                return Unauthorized(ResponseHelper.UnsuccessfulResponse("Código ha expirado, recupera la cuenta para obtener uno nuevo"));
             }
 
             // 2. Change state of the account / activate email.
@@ -631,7 +634,8 @@ public class AuthenticationController : ControllerBase
         // 1. Verify there are no codes for this user.
         // If there is other code, delete it.
         EmailConfirmationCode existentCode = await this._emailConfirmationCodeRepository.GetByUser(user);
-        if(existentCode != null){
+        if (existentCode != null)
+        {
             await this._emailConfirmationCodeRepository.Delete(existentCode);
         }
         // 2. Create and store new code.
@@ -647,7 +651,7 @@ public class AuthenticationController : ControllerBase
         // 4. Send the new password on an email.
         this._logger.LogInformation("Attempting to send code to new user.");
         string emailSubject = $"puebla - Se necesita activar la cuenta";
-        string emailLink = $"{ApiRouteSettings.Server}/{ApiControllerRoutes.Authentication}/confirm/{code.Code}";
+        string emailLink = $"{this._webClientSettings.Host}/auth/confirm/{code.Code}";
         string emailHtmlContent = $"puebla - Activación de cuenta <br><br>Para activar el usuario <i>{user.UserName}</i> haga click en el siguiente enlace:<br><br><a href='{emailLink}'>{emailLink}</a><br><br>Este es un mensaje generado automáticamente. Por favor, no respondas a este correo electrónico.";
         await this._emailService.SendEmail(user.Email, emailSubject, emailHtmlContent);
 
@@ -678,27 +682,33 @@ public class AuthenticationController : ControllerBase
         }
     }
 
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [HttpDelete("users/{userId}")]
     public async Task<ActionResult> Delete(string userId)
     {
         try
         {
             // 1. Get user using id obtained from path parameter
-            ApplicationUser user = await this._userManager.FindByIdAsync(userId);
-            if (user == null)
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No existe un usuario con este ID."));
+            ApplicationUser deletedUser = await this._userManager.FindByIdAsync(userId);
+            if (deletedUser == null)
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No existe un usuario con este ID."));
 
             // 2. Don't allow admin user to be deleted.
-            if (user.UserName == "admin")
-                return BadRequest(this.GenerateUnsuccessfulAuthenticationResponse("No se puede desactivar el usuario administrador."));
+            if (deletedUser.UserName == "admin")
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("No se puede desactivar el usuario administrador."));
 
-            string username = user.UserName;
+            // Only administrator users can delete any user. 
+            // The rest of users can only delete themselves.
+            ApplicationUser user = await TokenHelper.GetUserFromJWTClaim(HttpContext.User.Identity as ClaimsIdentity, _userManager);
+            if (!await this._userManager.IsInRoleAsync(user, "admin") && user.Id != deletedUser.Id)
+                return BadRequest(ResponseHelper.UnsuccessfulResponse("Solo puedes eliminar tu usuario"));
+
+            string username = deletedUser.UserName;
 
             // 3. Delete the user.
-            await this._userManager.DeleteAsync(user);
+            await this._userManager.DeleteAsync(deletedUser);
 
-            // 5. Return response.
+            // 4. Return response.
             return Ok(ResponseHelper.SuccessfulResponse($"Cuenta {username} fue eliminada."));
         }
         catch (Exception e)
@@ -716,29 +726,27 @@ public class AuthenticationController : ControllerBase
     #region Helpers
     private async Task<Response<AuthResponse>> GenerateSuccessfulAuthenticationResponse(ApplicationUser user)
     {
-        // IMPORTANT: Response comes from the HttpContext from the incoming HTTP request.
+        // IMPORTANT: Response (the object "Response.Headers", not the class) comes from the HttpContext 
+        // from the incoming HTTP request.
 
         // Generate a JWT, refresh token, and add the roles to the response object.
-        Response<AuthResponse> response = await TokenHelper.GenerateJWTToken(user, _jwtConfiguration,
-        _context, _userManager, _roleManager);
+        string jwt = await TokenHelper.GenerateJWTToken(user, _jwtConfiguration,
+         _context, _userManager, _roleManager);
+
         // Add JWT to response's headers.
-        Response.Headers.Append("Authorization", $"Bearer {response.Object.Token}");
-        // Add roles and personal information.
-        response.Object.Roles = (await this._userManager.GetRolesAsync(user)).ToList();
-        // TODO: Remove JWT from response object.
-        response.Object.FirstName = user.FirstName;
-        response.Object.LastName = user.LastName;
-        return response;
-    }
-    private Response<AuthResponse> GenerateUnsuccessfulAuthenticationResponse(string error)
-    {
-        return ResponseHelper.UnsuccessfulResponse<AuthResponse>(new List<string>(){
-            error
-        });
-    }
-    private Response<AuthResponse> GenerateUnsuccessfulAuthenticationResponse(List<string> errors)
-    {
-        return ResponseHelper.UnsuccessfulResponse<AuthResponse>(errors);
+        Response.Headers.Append("Authorization", $"Bearer {jwt}");
+
+        return new Response<AuthResponse>()
+        {
+            Result = true,
+            Object = new()
+            {
+                // Add personal information.
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email!
+            }
+        };
     }
     #endregion
 };

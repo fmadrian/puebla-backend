@@ -11,7 +11,7 @@ namespace PueblaApi.Entities.Configuration
         public void Configure(EntityTypeBuilder<ApplicationUser> builder)
         {
             // Unique constraint for "NationalId" field.
-            builder.HasIndex(user => user.NationalId, "UK_AspNetUsers_NationalId").IsUnique();
+            // builder.HasIndex(user => user.NationalId, "UK_AspNetUsers_NationalId").IsUnique();
         }
     }
 }

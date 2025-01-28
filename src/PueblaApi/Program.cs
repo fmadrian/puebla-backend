@@ -18,6 +18,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+#region Web client settings
+WebClientSettings webClientSettings = builder.Configuration.GetSection(nameof(WebClientSettings)).Get<WebClientSettings>();
+builder.Services.AddSingleton<WebClientSettings>(webClientSettings);
+#endregion
 
 #region JWT configuration
 // Inject JWT configuration.
@@ -71,9 +75,10 @@ builder.Services.AddSingleton(tokenValidationParameters);
 // Fixes issue: Unable to resolve service for type 'Microsoft.AspNetCore.Identity.UserManager`1[Microsoft.AspNetCore.Identity.IdentityUser]'
 // By adding IdentityRole we're telling Identity framework, we want to embed roles inside the Identity.
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(
-    options => {
+    options =>
+    {
         options.SignIn.RequireConfirmedEmail = true; // Require to confirm email for the new accounts.
-    } 
+    }
 ).AddEntityFrameworkStores<ApplicationDbContext>();
 #endregion
 
@@ -107,7 +112,8 @@ builder.Services.AddCors(options =>
             //policy.WithOrigins("http://localhost:4200")
             policy.AllowAnyOrigin()
                 .AllowAnyHeader() // Allow all headers.
-                .AllowAnyMethod();
+                .AllowAnyMethod()
+                .WithExposedHeaders("Authorization");
             // .WithMethods("OPTIONS", "POST", "PUT", "DELETE", "GET"); // HTTP methods allowed.
         });
 });
