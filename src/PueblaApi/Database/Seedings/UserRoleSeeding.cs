@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace PueblaApi.Database.Seedings;
 
-public class UsersRolesSeedings
+public class UserRoleSeeding
 {
     /**
         Seeding data for users and roles works in a different way due to the interaction with Identity.
@@ -97,8 +97,8 @@ public class UsersRolesSeedings
         {
             Email = email,
             UserName = username,
-            FirstName = "admin",
-            LastName = "admin",
+            FirstName = firstName,
+            LastName = lastName,
             //NationalId = "0",
             IsEnabled = true,
             EmailConfirmed = true,
