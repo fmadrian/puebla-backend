@@ -15,6 +15,11 @@ namespace PueblaApi.Database
 
         public DbSet<EmailConfirmationCode> EmailConfirmationCodes { get; set; }
 
+        public DbSet<Movie> Movies { get; set; }
+        public DbSet<Studio> Studios { get; set; }
+        public DbSet<Category> Categories { get; set; }
+
+
         #endregion
         public ApplicationDbContext(DbContextOptions options) : base(options)
         {

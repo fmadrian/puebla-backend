@@ -22,6 +22,21 @@ namespace PueblaApi.Database.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("CategoryMovie", b =>
+                {
+                    b.Property<long>("CategoriesId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("MoviesId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("CategoriesId", "MoviesId");
+
+                    b.HasIndex("MoviesId");
+
+                    b.ToTable("CategoryMovie");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -229,6 +244,23 @@ namespace PueblaApi.Database.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("PueblaApi.Entities.Category", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Categories");
+                });
+
             modelBuilder.Entity("PueblaApi.Entities.EmailConfirmationCode", b =>
                 {
                     b.Property<string>("UserId")
@@ -243,6 +275,80 @@ namespace PueblaApi.Database.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("EmailConfirmationCodes");
+                });
+
+            modelBuilder.Entity("PueblaApi.Entities.Movie", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BoxOffice")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ImageURL")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ReleaseYear")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("StudioId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudioId");
+
+                    b.ToTable("Movies");
+                });
+
+            modelBuilder.Entity("PueblaApi.Entities.Studio", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("FoundationYear")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ImageURL")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Studios");
+                });
+
+            modelBuilder.Entity("CategoryMovie", b =>
+                {
+                    b.HasOne("PueblaApi.Entities.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoriesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PueblaApi.Entities.Movie", null)
+                        .WithMany()
+                        .HasForeignKey("MoviesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -307,9 +413,23 @@ namespace PueblaApi.Database.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PueblaApi.Entities.Movie", b =>
+                {
+                    b.HasOne("PueblaApi.Entities.Studio", "Studio")
+                        .WithMany("Movies")
+                        .HasForeignKey("StudioId");
+
+                    b.Navigation("Studio");
+                });
+
             modelBuilder.Entity("PueblaApi.Entities.ApplicationUser", b =>
                 {
                     b.Navigation("EmailConfirmationCode");
+                });
+
+            modelBuilder.Entity("PueblaApi.Entities.Studio", b =>
+                {
+                    b.Navigation("Movies");
                 });
 #pragma warning restore 612, 618
         }
