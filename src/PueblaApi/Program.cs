@@ -120,11 +120,12 @@ builder.Services.AddCors(options =>
 #endregion
 
 #region AutoMapper
-// builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAutoMapper(typeof(Program));
 #endregion
 
 #region Repositories
 builder.Services.AddScoped<IEmailConfirmationCodeRepository, EmailConfirmationCodeRepository>();
+builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 #endregion
 
 var app = builder.Build();
