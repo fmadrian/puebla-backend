@@ -6,6 +6,7 @@ using PueblaApi.Database;
 using PueblaApi.DTOS.Base;
 using PueblaApi.DTOS.Movie;
 using PueblaApi.Entities;
+using PueblaApi.Exceptions;
 using PueblaApi.Repositories.Interfaces;
 
 namespace PueblaApi.Repositories;
@@ -28,9 +29,23 @@ public class MovieRepository : IMovieRepository
         throw new NotImplementedException();
     }
 
-    public Task<Movie> Create(Movie item)
+    public async Task<Movie> Create(Movie item)
     {
-        throw new NotImplementedException();
+        // Indicate that no change should be made to the ASSOCIATED entities.
+        foreach (Category relatedItem in item.Categories)
+        {
+            this._context.Entry(relatedItem).State = EntityState.Unchanged;
+        }
+        if (item.Studio != null)
+        {
+            this._context.Entry(item.Studio).State = EntityState.Unchanged;
+        }
+
+        this._context.Movies.Add(item);
+        var result = await this._context.SaveChangesAsync();
+        if (result == 0)
+            throw new ApiInternalException("No se añadió paciente a base de datos.");
+        return item;
     }
 
     public Task Delete(Movie item)

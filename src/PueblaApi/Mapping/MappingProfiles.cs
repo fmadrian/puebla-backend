@@ -30,14 +30,42 @@ public partial class MappingProfiles : Profile
             )
         );
 
+        CreateMap<CreateMovieRequest, Movie>()
+        .ForMember(
+            destination => destination.ImageURL,
+            action => action.Ignore()
+        ).ForMember(
+            destination => destination.Studio,
+            action => action.MapFrom(
+                (source, target, result, context) => context.Mapper.Map<Studio>(source.Studio)
+            )
+        ).ForMember(
+            destination => destination.Categories,
+            action => action.MapFrom(
+                (source, target, result, context) => context.Mapper.Map<List<Category>>(source.Categories)
+            )
+        );
+
         #endregion
 
         #region Categories
         CreateMap<Category, CategoryResponse>();
+        CreateMap<long, Category>().ForMember(
+            destination => destination.Id,
+            action => action.MapFrom(
+                (source, target, result, context) => source
+            )
+        );
         #endregion
 
         #region Studios
         CreateMap<Studio, StudioResponse>();
+        CreateMap<long, Studio>().ForMember(
+            destination => destination.Id,
+            action => action.MapFrom(
+                (source, target, result, context) => source
+            )
+        );
         #endregion
     }
 }
