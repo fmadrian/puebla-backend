@@ -119,7 +119,7 @@ public class MovieController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
     public async Task<IActionResult> Delete(long id)
     {
         try
@@ -149,47 +149,7 @@ public class MovieController : ControllerBase
         }
     }
 
-    [HttpPut("{id}")]
-    // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
-    public async Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateMovieRequest dto)
-    {
-        try
-        {
-            // 1. Search movie by ID.
-            Movie movie = await this._movieRepository.GetById(id);
 
-            if (movie == null)
-                return NotFound($"Movie {id} was not found.");
-
-            // 2. Make changes from to DTO to entity.
-            movie.Name = dto.Name ?? movie.Name;
-            movie.ReleaseYear = dto.ReleaseYear ?? movie.ReleaseYear;
-            movie.BoxOffice = dto.BoxOffice ?? movie.BoxOffice;
-
-            /*movie.Studio = dto.Studio ?? movie.Studio;
-            movie.Categories = dto.Categories ?? movie.Categories;*/
-
-            // 3. Upload image using existent public ID and or create a new one if the image didn't exist before
-            // to add to the entity.
-
-            if (dto.Image != null)
-                await this._imageService.UploadImage(dto.Image, movie.ImageURL ?? null);
-
-
-            // 4. Store entity in database and return.
-            movie = await this._movieRepository.Create(movie);
-
-            return Ok(ResponseHelper.SuccessfulResponse("Updated."));
-        }
-        catch (ApiException e)
-        {
-            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
-        }
-        catch (Exception e)
-        {
-            return ErrorHelper.Internal(this._logger, e.StackTrace);
-        }
-    }
 
 
     #endregion

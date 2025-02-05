@@ -24,9 +24,9 @@ public class MovieRepository : IMovieRepository
     }
     #endregion
 
-    public Task<bool> Any(Expression<Func<Movie, bool>> predicate, CancellationToken cancellationToken = default)
+    public async Task<bool> Any(Expression<Func<Movie, bool>> predicate, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return await this._context.Movies.AnyAsync(predicate, cancellationToken);
     }
 
     public async Task<Movie> Create(Movie item)
@@ -44,13 +44,16 @@ public class MovieRepository : IMovieRepository
         this._context.Movies.Add(item);
         var result = await this._context.SaveChangesAsync();
         if (result == 0)
-            throw new ApiInternalException("No se añadió paciente a base de datos.");
+            throw new ApiInternalException("[REPOSITORY]: Couldn't add item to database.");
         return item;
     }
 
-    public Task Delete(Movie item)
+    public async Task Delete(Movie item)
     {
-        throw new NotImplementedException();
+        this._context.Movies.Remove(item);
+        int result = await this._context.SaveChangesAsync();
+        if (result == 0)
+            throw new ApiException("[REPOSITORY]: Couldn't add remove item from database.");
     }
 
     public async Task<Movie?> GetById(long id)
@@ -148,7 +151,7 @@ public class MovieRepository : IMovieRepository
         return result;
     }
 
-    public Task<Movie> Update(Movie item)
+    public async Task<Movie> Update(Movie item)
     {
         throw new NotImplementedException();
     }
