@@ -149,7 +149,65 @@ public class MovieController : ControllerBase
         }
     }
 
+    [HttpPut("{id}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
+    public async Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateMovieRequest dto)
+    {
+        try
+        {
+            // 1. Search movie by ID.
+            Movie movie = await this._movieRepository.GetById(id);
 
+            if (movie == null)
+                return NotFound($"Movie {id} was not found.");
+
+            // 2. Make changes from to DTO to entity.
+            movie.Name = dto.Name ?? movie.Name;
+            movie.ReleaseYear = dto.ReleaseYear ?? movie.ReleaseYear;
+            movie.BoxOffice = dto.BoxOffice ?? movie.BoxOffice;
+
+
+            // To avoid creating entities that are already tracked by the context (which causes a fatal error).
+            // Filter elements that don't exist in the received list.
+            // Then add elements not present in the current list.
+
+            if (dto.Categories != null)
+            {
+                // Retain categories in both entity and update DTO.
+                movie.Categories = movie.Categories.Where(
+                    category => dto.Categories.Contains(category.Id)
+                ).ToList();
+                // Add categories that come from the DTO.
+                movie.Categories.AddRange(
+                    dto.Categories
+                    .Where(categoryId => !movie.Categories.Any(c => c.Id == categoryId))
+                    .Select(categoryId => new Category { Id = categoryId })
+                );
+            }
+
+            // Change studio using the ID on DTO. 
+            if (dto.Studio != null)
+                movie.Studio = this._mapper.Map<Studio>(dto.Studio);
+
+            // 3. Upload image using existent public ID and or create a new one if the image didn't exist before
+            // to add to the entity.
+            await this._imageService.UploadImage(dto.Image, movie.ImageURL ?? null);
+
+
+            // 4. Store entity in database and return.
+            movie = await this._movieRepository.Create(movie);
+
+            return Ok(ResponseHelper.SuccessfulResponse("Updated."));
+        }
+        catch (ApiException e)
+        {
+            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
 
 
     #endregion

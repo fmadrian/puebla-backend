@@ -53,15 +53,12 @@ public class ImageService : IImageService
                 // in one upload.
                 File = new FileDescription(file.Name, file.OpenReadStream()),
                 Overwrite = true,
-                // PublicId = imageName,
+                PublicId = publicId ?? null, // Add public ID when overwriting/updating the image.
                 AssetFolder = this._imageServiceConfiguration.AssetFolderName,
                 UseAssetFolderAsPublicIdPrefix = true,
                 Transformation = new Transformation().Width(this._imageServiceConfiguration.MaxWidth)
                                 .Height(this._imageServiceConfiguration.MaxHeight).Crop("scale")
             };
-            // Add public ID when overwriting/updating the image.
-            if (publicId != null)
-                uploadParams.PublicId = publicId;
 
             var uploadResult = await this.Cloudinary.UploadAsync(uploadParams);
             this._logger.LogInformation("[CLOUDINARY]: Image uploaded.");

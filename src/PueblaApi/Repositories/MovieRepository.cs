@@ -153,7 +153,19 @@ public class MovieRepository : IMovieRepository
 
     public async Task<Movie> Update(Movie item)
     {
-        throw new NotImplementedException();
+        // Indicate that no change should be made to the ASSOCIATED entities.
+        foreach (Category relatedItem in item.Categories)
+        {
+            this._context.Entry(relatedItem).State = EntityState.Unchanged;
+        }
+        if (item.Studio != null)
+        {
+            this._context.Entry(item.Studio).State = EntityState.Unchanged;
+        }
+        var result = await this._context.SaveChangesAsync();
+        if (result == 0)
+            throw new ApiInternalException("[REPOSITORY]: Couldn't update item in database.");
+        return item;
     }
 
 
