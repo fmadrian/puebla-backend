@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PueblaApi.DTOS.Base;
-namespace SodaAPI.RequestHelpers;
+namespace PueblaApi.RequestHelpers;
 /**
     Helper methods that help to handle different exceptions that might arise in the API.
 **/
@@ -66,7 +66,7 @@ public class ErrorHelper
                     message
                 }
         });
-        error.StatusCode = StatusCodes.Status400BadRequest; // HTTP 500
+        error.StatusCode = StatusCodes.Status400BadRequest; // HTTP 400
         return error;
     }
     public static ActionResult BadRequest(ILogger logger, List<string> errors)
@@ -81,7 +81,7 @@ public class ErrorHelper
             Result = false,
             Errors = errors
         });
-        error.StatusCode = StatusCodes.Status400BadRequest; // HTTP 500
+        error.StatusCode = StatusCodes.Status400BadRequest; // HTTP 400
         return error;
     }
 }

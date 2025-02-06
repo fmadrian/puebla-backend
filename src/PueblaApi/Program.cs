@@ -9,6 +9,7 @@ using PueblaApi.Entities;
 using PueblaApi.Helpers;
 using PueblaApi.Repositories;
 using PueblaApi.Repositories.Interfaces;
+using PueblaApi.Services;
 using PueblaApi.Services.Interfaces;
 using PueblaApi.Settings;
 
@@ -94,11 +95,19 @@ AdminUserConfiguration adminUserConfiguration = builder.Configuration.GetSection
 builder.Services.AddSingleton<AdminUserConfiguration>(adminUserConfiguration);
 #endregion
 
-#region Email configuration and email service
+#region Email configuration and email service (Singleton)
 EmailConfiguration emailConfiguration = builder.Configuration.GetSection(nameof(EmailConfiguration)).Get<EmailConfiguration>();
 builder.Services.AddSingleton<EmailConfiguration>(emailConfiguration);
 // Add email service.
 builder.Services.AddSingleton<IEmailService, EmailService>();
+#endregion
+
+#region Image service configuration and image service (Singleton)
+
+ImageServiceConfiguration imageServiceConfiguration = builder.Configuration.GetSection(nameof(ImageServiceConfiguration)).Get<ImageServiceConfiguration>();
+builder.Services.AddSingleton<ImageServiceConfiguration>(imageServiceConfiguration);
+// Add image service.
+builder.Services.AddSingleton<IImageService, ImageService>();
 #endregion
 
 #region CORS configuration
@@ -120,11 +129,13 @@ builder.Services.AddCors(options =>
 #endregion
 
 #region AutoMapper
-// builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAutoMapper(typeof(Program));
 #endregion
+
 
 #region Repositories
 builder.Services.AddScoped<IEmailConfirmationCodeRepository, EmailConfirmationCodeRepository>();
+builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 #endregion
 
 var app = builder.Build();
