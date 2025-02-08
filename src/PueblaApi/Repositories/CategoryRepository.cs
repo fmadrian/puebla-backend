@@ -81,9 +81,62 @@ public class CategoryRepository : ICategoryRepository
             ).FirstOrDefaultAsync();
     }
 
-    public Task<SearchResponse<Category>> Search(SearchCategoryRequest request, bool includeRelated = true)
+    public async Task<SearchResponse<Category>> Search(SearchCategoryRequest request, bool includeRelated = true)
     {
-        throw new NotImplementedException();
+        // 1. Build main query.
+        IQueryable<Category> query = this._context.Categories
+                            .Where(
+                                item => (
+                                    request.Q != null ? item.Name.ToLower().Contains(request.Q.ToLower()) : true
+                                )
+                            ).AsQueryable();
+
+        // 2. Retrieve fields, and add related entities.
+
+        query = query.Select(item => new Category()
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Movies = item.Movies.Select(
+                movie => new Movie()
+                {
+                    Id = movie.Id,
+                    Name = movie.Name,
+                    ImageURL = movie.ImageURL,
+                    BoxOffice = movie.BoxOffice,
+                    ReleaseYear = movie.ReleaseYear,
+                    Categories = movie.Categories.Select(
+                        category => new Category()
+                        {
+                            Id = category.Id,
+                            Name = category.Name
+                        }
+                    ).ToList(),
+                    Studio = movie.Studio == null ? null : new Studio()
+                    {
+                        Name = movie.Name,
+                        Id = movie.Id
+                    }
+                }
+            ).ToList()
+        });
+
+        // 3. Apply sorting column.
+        Expression<Func<Category, object>> keySelector = request.SortColumn?.ToLower() switch
+        {
+            "name" => x => x.Name,
+            _ => x => x.Id // Default.
+        };
+
+        // 4. Apply sorting order (descending or ascending)
+        if (request.SortOrder?.ToLower() == "desc")
+            query = query.OrderByDescending(keySelector);
+        else
+            query = query.OrderBy(keySelector);
+
+        // 5. Build search response object that will execute the query and return additional information.
+        var result = await SearchResponse<Category>.CreateAsync(query, request.Page, request.PageSize);
+        return result;
     }
 
     public Task<Category> Update(Category item)

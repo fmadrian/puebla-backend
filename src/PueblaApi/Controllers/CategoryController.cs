@@ -1,6 +1,7 @@
 using System;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using PueblaApi.DTOS.Base;
 using PueblaApi.DTOS.Category;
 using PueblaApi.Entities;
 using PueblaApi.Exceptions;
@@ -78,6 +79,26 @@ public class CategoryController : ControllerBase
             return ErrorHelper.Internal(this._logger, e.StackTrace);
         }
     }
+
+    [HttpGet]
+    public async Task<IActionResult> Search([FromQuery] SearchCategoryRequest dto)
+    {
+        try
+        {
+            // 1. Take the response. retrieve the entities, map them into their respective response object.
+            SearchResponse<Category> result = await this._categoryRepository.Search(dto);
+            List<CategoryResponse> items = result.Items.Select(this._mapper.Map<CategoryResponse>).ToList();
+            // 2. Return them into a search response object.
+            return Ok(ResponseHelper.SuccessfulResponse(
+                new SearchResponse<CategoryResponse>(items, result.Page, result.PageSize, result.TotalCount)
+            ));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
+
 
 
 
