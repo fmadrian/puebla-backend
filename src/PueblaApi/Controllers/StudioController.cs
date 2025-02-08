@@ -82,6 +82,25 @@ public class StudioController : ControllerBase
         }
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Search([FromQuery] SearchStudioRequest dto)
+    {
+        try
+        {
+            // 1. Take the response. retrieve the entities, map them into their respective response object.
+            SearchResponse<Studio> result = await this._studioRepository.Search(dto);
+            List<StudioResponse> items = result.Items.Select(this._mapper.Map<StudioResponse>).ToList();
+            // 2. Return them into a search response object.
+            return Ok(ResponseHelper.SuccessfulResponse(
+                new SearchResponse<StudioResponse>(items, result.Page, result.PageSize, result.TotalCount)
+            ));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
+
     #endregion
 
 }

@@ -79,7 +79,57 @@ public class StudioRepository : IStudioRepository
 
     public async Task<SearchResponse<Studio>> Search(SearchStudioRequest request, bool includeRelated = true)
     {
-        throw new NotImplementedException();
+        // 1. Build main query.
+        IQueryable<Studio> query = this._context.Studios
+                            .Where(
+                                item => (
+                                    request.Q != null ? item.Name.ToLower().Contains(request.Q.ToLower()) : true
+                                )
+                            ).AsQueryable();
+
+        // 2. Retrieve fields, and add related entities.
+
+        query = query.Select(item => new Studio
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Country = item.Country,
+            FoundationYear = item.FoundationYear,
+            Movies = item.Movies.Select(movie => new Movie()
+            {
+                Id = movie.Id,
+                BoxOffice = movie.BoxOffice,
+                Name = movie.Name,
+                ImageURL = movie.ImageURL,
+                ReleaseYear = movie.ReleaseYear,
+                Categories = includeRelated ? new List<Category>() { } : movie.Categories.Select(
+                    category => new Category
+                    {
+                        Id = category.Id,
+                        Name = category.Name
+                    }
+                ).ToList(),
+                Studio = null
+            }).ToList()
+        });
+
+
+        // 3. Apply sorting column.
+        Expression<Func<Studio, object>> keySelector = request.SortColumn?.ToLower() switch
+        {
+            "name" => x => x.Name,
+            _ => x => x.Id // Default.
+        };
+
+        // 4. Apply sorting order (descending or ascending)
+        if (request.SortOrder?.ToLower() == "desc")
+            query = query.OrderByDescending(keySelector);
+        else
+            query = query.OrderBy(keySelector);
+
+        // 5. Build search response object that will execute the query and return additional information.
+        var result = await SearchResponse<Studio>.CreateAsync(query, request.Page, request.PageSize);
+        return result;
     }
 
     public async Task<Studio> Update(Studio item)
