@@ -55,7 +55,32 @@ public class StudioController : ControllerBase
         }
     }
 
+    [HttpDelete("{id}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
+    public async Task<IActionResult> Delete(long id)
+    {
+        try
+        {
+            // 1. Map DTO to entity.
+            Studio studio = await this._studioRepository.GetById(id);
 
+            if (studio == null)
+                return NotFound($"Studio {id} was not found.");
+
+            // 2. Remove entity from database and return.
+            await this._studioRepository.Delete(studio);
+
+            return Ok(ResponseHelper.SuccessfulResponse("Deleted."));
+        }
+        catch (ApiException e)
+        {
+            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
 
     #endregion
 

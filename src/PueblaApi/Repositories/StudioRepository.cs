@@ -39,7 +39,10 @@ public class StudioRepository : IStudioRepository
 
     public async Task Delete(Studio item)
     {
-        throw new NotImplementedException();
+        this._context.Studios.Remove(item);
+        int result = await this._context.SaveChangesAsync();
+        if (result == 0)
+            throw new ApiException("[REPOSITORY]: Couldn't add remove item from database.");
     }
 
     public async Task<Studio?> GetById(long id)
