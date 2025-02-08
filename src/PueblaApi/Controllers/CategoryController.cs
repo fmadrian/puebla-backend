@@ -131,6 +131,33 @@ public class CategoryController : ControllerBase
         }
     }
 
+    [HttpDelete("{id}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
+    public async Task<IActionResult> Delete(long id)
+    {
+        try
+        {
+            // 1. Map DTO to entity.
+            Category category = await this._categoryRepository.GetById(id);
+
+            if (category == null)
+                return NotFound($"Studio {id} was not found.");
+
+            // 2. Remove entity from database and return.
+            await this._categoryRepository.Delete(category);
+
+            return Ok(ResponseHelper.SuccessfulResponse("Deleted."));
+        }
+        catch (ApiException e)
+        {
+            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
+
 
 
 

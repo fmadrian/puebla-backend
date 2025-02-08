@@ -37,9 +37,12 @@ public class CategoryRepository : ICategoryRepository
         return item;
     }
 
-    public Task Delete(Category item)
+    public async Task Delete(Category item)
     {
-        throw new NotImplementedException();
+        this._context.Categories.Remove(item);
+        int result = await this._context.SaveChangesAsync();
+        if (result == 0)
+            throw new ApiException("[REPOSITORY]: Couldn't add remove item from database.");
     }
 
     public async Task<Category?> GetById(long id)
