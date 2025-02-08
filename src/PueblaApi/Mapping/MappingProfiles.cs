@@ -59,6 +59,7 @@ public partial class MappingProfiles : Profile
         #endregion
 
         #region Studios
+        CreateMap<CreateStudioRequest, Studio>();
         CreateMap<Studio, StudioResponse>();
         CreateMap<long, Studio>().ForMember(
             destination => destination.Id,

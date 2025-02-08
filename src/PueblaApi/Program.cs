@@ -136,6 +136,7 @@ builder.Services.AddAutoMapper(typeof(Program));
 #region Repositories
 builder.Services.AddScoped<IEmailConfirmationCodeRepository, EmailConfirmationCodeRepository>();
 builder.Services.AddScoped<IMovieRepository, MovieRepository>();
+builder.Services.AddScoped<IStudioRepository, StudioRepository>();
 #endregion
 
 var app = builder.Build();
