@@ -37,6 +37,8 @@ public class CategoryController : ControllerBase
 
     #region Endpoints
 
+    [HttpPost]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
     public async Task<IActionResult> Create([FromBody] CreateCategoryRequest dto)
     {
         try
