@@ -1,5 +1,7 @@
 using System;
 using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PueblaApi.DTOS.Base;
 using PueblaApi.DTOS.Category;
@@ -92,6 +94,36 @@ public class CategoryController : ControllerBase
             return Ok(ResponseHelper.SuccessfulResponse(
                 new SearchResponse<CategoryResponse>(items, result.Page, result.PageSize, result.TotalCount)
             ));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
+    public async Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateCategoryRequest dto)
+    {
+        try
+        {
+            // 1. Search movie by ID.
+            Category category = await this._categoryRepository.GetById(id);
+
+            if (category == null)
+                return NotFound($"Category {id} was not found.");
+
+            // 2. Make changes from to DTO to entity.
+            category.Name = dto.Name ?? category.Name;
+
+            // 3. Store entity in database and return.
+            category = await this._categoryRepository.Create(category);
+
+            return Ok(ResponseHelper.SuccessfulResponse("Updated."));
+        }
+        catch (ApiException e)
+        {
+            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
         }
         catch (Exception e)
         {

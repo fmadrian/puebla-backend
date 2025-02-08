@@ -139,8 +139,11 @@ public class CategoryRepository : ICategoryRepository
         return result;
     }
 
-    public Task<Category> Update(Category item)
+    public async Task<Category> Update(Category item)
     {
-        throw new NotImplementedException();
+        var result = await this._context.SaveChangesAsync();
+        if (result == 0)
+            throw new ApiInternalException("[REPOSITORY]: Couldn't update item in database.");
+        return item;
     }
 }
