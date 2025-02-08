@@ -50,6 +50,7 @@ public partial class MappingProfiles : Profile
 
         #region Categories
         CreateMap<Category, CategoryResponse>();
+        CreateMap<CreateCategoryRequest, Category>();
         CreateMap<long, Category>().ForMember(
             destination => destination.Id,
             action => action.MapFrom(
@@ -59,6 +60,7 @@ public partial class MappingProfiles : Profile
         #endregion
 
         #region Studios
+        CreateMap<CreateStudioRequest, Studio>();
         CreateMap<Studio, StudioResponse>();
         CreateMap<long, Studio>().ForMember(
             destination => destination.Id,
