@@ -119,7 +119,7 @@ public class CategoryController : ControllerBase
             category.Name = dto.Name ?? category.Name;
 
             // 3. Store entity in database and return.
-            category = await this._categoryRepository.Create(category);
+            category = await this._categoryRepository.Update(category);
 
             return Ok(ResponseHelper.SuccessfulResponse("Updated."));
         }

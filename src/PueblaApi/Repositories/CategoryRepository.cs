@@ -144,9 +144,24 @@ public class CategoryRepository : ICategoryRepository
 
     public async Task<Category> Update(Category item)
     {
+        // After being retrieved entity is not loaded into context.
+        // To indicate changes took place and an update should happen, we have to mark
+        // the entity's state as 'Modified'.
+
+        this._context.Entry(item).State = EntityState.Modified;
+
         var result = await this._context.SaveChangesAsync();
         if (result == 0)
             throw new ApiInternalException("[REPOSITORY]: Couldn't update item in database.");
         return item;
+
+        // Per: https://learn.microsoft.com/en-us/ef/ef6/saving/change-tracking/entity-state
+        // An alternative to the previous process is: 
+        //      1. Attach the updated entity (not tracked) to the context.
+        //      2. Save the context.
+
+        // this._context.Attach(item);
+        // var result = await this._context.SaveChangesAsync();
+        // ...   
     }
 }
