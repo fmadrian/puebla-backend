@@ -75,8 +75,8 @@ public class CategoryRepository : ICategoryRepository
                             ).ToList(),
                             Studio = movie.Studio == null ? null : new Studio()
                             {
-                                Name = movie.Name,
-                                Id = movie.Id
+                                Name = movie.Studio.Name,
+                                Id = movie.Studio.Id
                             }
                         }
                     ).ToList()
@@ -117,8 +117,8 @@ public class CategoryRepository : ICategoryRepository
                     ).ToList(),
                     Studio = movie.Studio == null ? null : new Studio()
                     {
-                        Name = movie.Name,
-                        Id = movie.Id
+                        Name = movie.Studio.Name,
+                        Id = movie.Studio.Id
                     }
                 }
             ).ToList()
