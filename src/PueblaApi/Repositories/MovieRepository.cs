@@ -1,6 +1,4 @@
-using System;
 using System.Linq.Expressions;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using PueblaApi.Database;
 using PueblaApi.DTOS.Base;
@@ -75,7 +73,6 @@ public class MovieRepository : IMovieRepository
                     Id = item.Studio.Id,
                     Country = item.Studio.Country,
                     FoundationYear = item.Studio.FoundationYear,
-                    ImageURL = item.Studio.ImageURL,
                     Name = item.Studio.Name
                 },
                 Categories = item.Categories.Select(relItem => new Category
@@ -121,7 +118,6 @@ public class MovieRepository : IMovieRepository
                     Id = item.Studio.Id,
                     Country = item.Studio.Country,
                     FoundationYear = item.Studio.FoundationYear,
-                    ImageURL = item.Studio.ImageURL,
                     Name = item.Studio.Name
                 } : null,
                 Categories = includeRelated ? item.Categories.Select(relItem => new Category

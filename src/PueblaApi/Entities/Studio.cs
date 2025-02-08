@@ -13,8 +13,6 @@ public class Studio
     [Required]
     public int FoundationYear { set; get; }
 
-    public string ImageURL { set; get; }
-
     // One to many.
     public List<Movie> Movies { set; get; }
 }
