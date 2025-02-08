@@ -101,6 +101,40 @@ public class StudioController : ControllerBase
         }
     }
 
+
+    [HttpPut("{id}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
+    public async Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateStudioRequest dto)
+    {
+        try
+        {
+            // 1. Search movie by ID.
+            Studio studio = await this._studioRepository.GetById(id);
+
+            if (studio == null)
+                return NotFound($"Studio {id} was not found.");
+
+            // 2. Make changes from to DTO to entity.
+            studio.Name = dto.Name ?? studio.Name;
+            studio.Country = dto.Country ?? studio.Country;
+            studio.FoundationYear = dto.FoundationYear ?? studio.FoundationYear;
+
+
+            // 4. Store entity in database and return.
+            studio = await this._studioRepository.Create(studio);
+
+            return Ok(ResponseHelper.SuccessfulResponse("Updated."));
+        }
+        catch (ApiException e)
+        {
+            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
+
     #endregion
 
 }

@@ -134,7 +134,10 @@ public class StudioRepository : IStudioRepository
 
     public async Task<Studio> Update(Studio item)
     {
-        throw new NotImplementedException();
+        var result = await this._context.SaveChangesAsync();
+        if (result == 0)
+            throw new ApiInternalException("[REPOSITORY]: Couldn't update item in database.");
+        return item;
     }
 
 }
