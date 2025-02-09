@@ -150,7 +150,7 @@ public class StudioController : ControllerBase
 
 
             // 4. Store entity in database and return.
-            studio = await this._studioRepository.Create(studio);
+            studio = await this._studioRepository.Update(studio);
 
             return Ok(ResponseHelper.SuccessfulResponse("Updated."));
         }

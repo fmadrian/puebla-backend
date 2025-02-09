@@ -137,6 +137,12 @@ public class StudioRepository : IStudioRepository
 
     public async Task<Studio> Update(Studio item)
     {
+        // After being retrieved entity is not loaded into context.
+        // To indicate changes took place and an update should happen, we have to mark
+        // the entity's state as 'Modified'.
+
+        this._context.Entry(item).State = EntityState.Modified;
+
         var result = await this._context.SaveChangesAsync();
         if (result == 0)
             throw new ApiInternalException("[REPOSITORY]: Couldn't update item in database.");
