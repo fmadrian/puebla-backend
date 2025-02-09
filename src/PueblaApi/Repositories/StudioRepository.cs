@@ -39,6 +39,9 @@ public class StudioRepository : IStudioRepository
 
     public async Task Delete(Studio item)
     {
+        // To delete the entity (not being tracked by context), we have to mark it as 'Deleted'.
+        // Set entity's state as deleted, then remove it from context and save.
+        this._context.Entry(item).State = EntityState.Deleted;
         this._context.Studios.Remove(item);
         int result = await this._context.SaveChangesAsync();
         if (result == 0)
