@@ -37,6 +37,35 @@ public class StudioController : ControllerBase
 
     #region Endpoints
 
+    [HttpPost]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
+    public async Task<IActionResult> Create([FromBody] CreateStudioRequest dto)
+    {
+        try
+        {
+            // 1. Map DTO to entity.
+            Studio studio = this._mapper.Map<Studio>(dto);
+
+            // 2. Store entity in database and return.
+            studio = await this._studioRepository.Create(studio);
+
+            return CreatedAtAction(nameof(Get), new { Id = studio.Id }, ResponseHelper.SuccessfulResponse<StudioResponse>(
+                new StudioResponse()
+                {
+                    Id = studio.Id,
+                })
+            );
+        }
+        catch (ApiException e)
+        {
+            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
+        }
+        catch (Exception e)
+        {
+            return ErrorHelper.Internal(this._logger, e.StackTrace);
+        }
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(long id)
     {
