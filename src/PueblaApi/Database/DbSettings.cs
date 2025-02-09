@@ -8,6 +8,8 @@
         public string Username { set; get; }
         public string Password { set; get; }
 
+        public bool SeedData { set; get; }
+
         public string ConnectionString
         {
             get

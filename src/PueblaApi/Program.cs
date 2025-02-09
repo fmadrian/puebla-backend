@@ -137,6 +137,7 @@ builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddScoped<IEmailConfirmationCodeRepository, EmailConfirmationCodeRepository>();
 builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<IStudioRepository, StudioRepository>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 #endregion
 
 var app = builder.Build();
@@ -144,8 +145,9 @@ var app = builder.Build();
 #region Seed user and roles
 
 // Initialize (seed data in) the database
-// TODO: Add flag to only seed the data the first time the app is deployed.
-// await DbInitializer.InitDb(app);
+// Data should only be seeded he first time the app is run. 
+if (dbSettings!.SeedData)
+    await DbInitializer.InitDb(app);
 
 #endregion
 

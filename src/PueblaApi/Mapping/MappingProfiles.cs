@@ -49,6 +49,7 @@ public partial class MappingProfiles : Profile
         #endregion
 
         #region Categories
+        CreateMap<CreateCategoryRequest, Category>();
         CreateMap<Category, CategoryResponse>();
         CreateMap<long, Category>().ForMember(
             destination => destination.Id,
