@@ -8,4 +8,5 @@ public interface IMovieRepository : IRepository<Movie>
 {
     Task<Movie?> GetById(long id);
     Task<SearchResponse<Movie>> Search(SearchMovieRequest request, bool includeRelated = true);
+    Task<Movie?> GetById_UseContext(long id);
 }

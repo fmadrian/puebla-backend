@@ -151,12 +151,12 @@ public class MovieController : ControllerBase
 
     [HttpPut("{id}")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = $"{ApiRoles.Admin}, {ApiRoles.Manager}")]
-    public async Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateMovieRequest dto)
+    public async Task<IActionResult> Update([FromRoute] long id, [FromForm] UpdateMovieRequest dto)
     {
         try
         {
             // 1. Search movie by ID.
-            Movie movie = await this._movieRepository.GetById(id);
+            Movie movie = await this._movieRepository.GetById_UseContext(id);
 
             if (movie == null)
                 return NotFound($"Movie {id} was not found.");
@@ -184,18 +184,30 @@ public class MovieController : ControllerBase
                     .Select(categoryId => new Category { Id = categoryId })
                 );
             }
+            else
+            {
+                movie.Categories.Clear();
+            }
 
-            // Change studio using the ID on DTO. 
-            if (dto.Studio != null)
+            // Change studio using the ID on DTO.
+            // Don't map the DTO if the value is the same as the existent studio
+            // to avoid loading it in context. 
+            if (dto.Studio == null)
+                movie.Studio = null;
+            else if (movie.Studio == null || dto.Studio != movie.Studio.Id)
                 movie.Studio = this._mapper.Map<Studio>(dto.Studio);
 
-            // 3. Upload image using existent public ID and or create a new one if the image didn't exist before
-            // to add to the entity.
-            await this._imageService.UploadImage(dto.Image, movie.ImageURL ?? null);
+            // 3. Upload image using existent public ID and or create a new one if the 
+            // image didn't exist before.
+
+            // If the image is not present in the DTO, there is no change.
+            // IMPORTANT: As it is, there is no way to delete an image without deleting the movie.
+            if (dto.Image != null)
+                await this._imageService.UploadImage(dto.Image, movie.ImageURL ?? null);
 
 
             // 4. Store entity in database and return.
-            movie = await this._movieRepository.Create(movie);
+            movie = await this._movieRepository.Update(movie);
 
             return Ok(ResponseHelper.SuccessfulResponse("Updated."));
         }

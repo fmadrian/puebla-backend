@@ -149,7 +149,9 @@ public class MovieRepository : IMovieRepository
 
     public async Task<Movie> Update(Movie item)
     {
-        // Indicate that no change should be made to the ASSOCIATED entities.
+        // We don't need to change the related items entity state to 'Unchanged'
+        // as they are not loaded into context.
+
         foreach (Category relatedItem in item.Categories)
         {
             this._context.Entry(relatedItem).State = EntityState.Unchanged;
@@ -158,11 +160,22 @@ public class MovieRepository : IMovieRepository
         {
             this._context.Entry(item.Studio).State = EntityState.Unchanged;
         }
+        // No need to mark entity as 'Updated' as it is done automatically (entity already attached to context).
         var result = await this._context.SaveChangesAsync();
         if (result == 0)
             throw new ApiInternalException("[REPOSITORY]: Couldn't update item in database.");
         return item;
     }
 
-
+    public async Task<Movie?> GetById_UseContext(long id)
+    {
+        // 1. Build and execute query.
+        // Using Select to grab only the fields we need.
+        // Studio and Categories ignore field movies in order to avoid an endless loop.
+        return await this._context.Movies
+            .Where(item => item.Id == id)
+            .Include(item => item.Studio)
+            .Include(item => item.Categories)
+            .FirstOrDefaultAsync();
+    }
 }
