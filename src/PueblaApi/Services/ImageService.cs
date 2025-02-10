@@ -73,7 +73,7 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<string> DeleteImage(string publicId)
+    public async Task DeleteImage(string publicId)
     {
         try
         {
@@ -83,12 +83,12 @@ public class ImageService : IImageService
             };
             DeletionResult deletionResult = await this.Cloudinary.DestroyAsync(deletionParams);
             this._logger.LogInformation("[CLOUDINARY]: Image deleted.");
-            return deletionResult.Result;
-        }
-        catch (ApiException)
-        {
-            // Don't log and rethrow exception.
-            throw;
+
+            if (deletionResult.Result != "not found" &&
+                deletionResult.Result != "ok")
+            {
+                throw new ApiInternalException($"[CLOUDINARY]: Image deletion result: {deletionResult.Result}.");
+            }
         }
         catch (Exception)
         {

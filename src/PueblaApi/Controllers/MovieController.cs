@@ -140,10 +140,6 @@ public class MovieController : ControllerBase
 
             return Ok(ResponseHelper.SuccessfulResponse("Deleted."));
         }
-        catch (ApiException e)
-        {
-            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
-        }
         catch (Exception e)
         {
             return ErrorHelper.Internal(this._logger, e.StackTrace);
