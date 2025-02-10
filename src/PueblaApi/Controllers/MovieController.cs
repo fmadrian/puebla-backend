@@ -46,7 +46,7 @@ public class MovieController : ControllerBase
             // 1. Search by ID.
             Movie movie = await this._movieRepository.GetById(id);
             if (movie == null)
-                return NotFound(ResponseHelper.UnsuccessfulResponse(@"Movie {id} doesn't exist"));
+                return NotFound(ResponseHelper.UnsuccessfulResponse($"Movie {id} doesn't exist"));
             // 2. Return mapped response.
             return Ok(ResponseHelper.SuccessfulResponse(this._mapper.Map<MovieResponse>(movie)));
         }
@@ -140,10 +140,6 @@ public class MovieController : ControllerBase
 
             return Ok(ResponseHelper.SuccessfulResponse("Deleted."));
         }
-        catch (ApiException e)
-        {
-            return BadRequest(ResponseHelper.UnsuccessfulResponse(e.Message));
-        }
         catch (Exception e)
         {
             return ErrorHelper.Internal(this._logger, e.StackTrace);
@@ -198,14 +194,21 @@ public class MovieController : ControllerBase
             else if (movie.Studio == null || dto.Studio != movie.Studio.Id)
                 movie.Studio = this._mapper.Map<Studio>(dto.Studio);
 
+
             // 3. Upload image using existent public ID and or create a new one if the 
             // image didn't exist before.
-
-            // If the image is not present in the DTO, there is no change.
-            // IMPORTANT: As it is, there is no way to delete an image without deleting the movie.
-            if (dto.Image != null)
-                await this._imageService.UploadImage(dto.Image, movie.ImageURL ?? null);
-
+            try
+            {
+                // If the image is not present in the DTO, there is no change.
+                // IMPORTANT: As it is, there is no way to delete an image without deleting the movie.
+                if (dto.Image != null)
+                    movie.ImageURL = await this._imageService.UploadImage(dto.Image, movie.ImageURL ?? null);
+            }
+            catch (Exception)
+            {
+                // If there is an exception while uploading the image, it can be ignored.
+                // The data the in database should be updated.
+            }
 
             // 4. Store entity in database and return.
             movie = await this._movieRepository.Update(movie);
