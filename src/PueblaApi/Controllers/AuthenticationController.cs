@@ -8,7 +8,7 @@ using PueblaApi.Database;
 using PueblaApi.Entities;
 using PueblaApi.Helpers;
 using PueblaApi.Services.Interfaces;
-using SodaAPI.RequestHelpers;
+using PueblaApi.RequestHelpers;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using PueblaApi.DTOS.Auth;

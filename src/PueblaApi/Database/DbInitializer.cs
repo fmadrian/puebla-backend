@@ -26,8 +26,16 @@ namespace PueblaApi.Database
 
             // Creates the database (if it doesn't exist, and applies pending migrations)
             // context.Database.Migrate();
+
             // Seeds roles and administrator user.
-            await UsersRolesSeedings.Initialize(userManager, roleManager, adminUserConfiguration);
+            await UserRoleSeeding.Initialize(userManager, roleManager, adminUserConfiguration!);
+            // Store categories and studios in database first.
+            // Otherwise, we won't be able to seed movies.
+            CategorySeeding.SeedData(context!);
+            StudioSeeding.SeedData(context!);
+            context!.SaveChanges();
+            MovieSeeding.SeedData(context!);
+            context!.SaveChanges();
         }
     }
 }

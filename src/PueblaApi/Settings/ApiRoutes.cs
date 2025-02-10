@@ -8,5 +8,9 @@ namespace PueblaApi.Settings
     {
         public const string Authentication = $"{ApiRouteSettings.Base}/auth";
         public const string User = $"{ApiRouteSettings.Base}/users";
+        public const string Movie = $"{ApiRouteSettings.Base}/movies";
+        public const string Studio = $"{ApiRouteSettings.Base}/studios";
+        public const string Category = $"{ApiRouteSettings.Base}/categories";
+
     }
 }

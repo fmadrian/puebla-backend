@@ -5,35 +5,25 @@
 namespace PueblaApi.Database.Migrations
 {
     /// <inheritdoc />
-    public partial class NoNationalId : Migration
+    public partial class StudiosNoImage : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "UK_AspNetUsers_NationalId",
-                table: "AspNetUsers");
-
             migrationBuilder.DropColumn(
-                name: "NationalId",
-                table: "AspNetUsers");
+                name: "ImageURL",
+                table: "Studios");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "NationalId",
-                table: "AspNetUsers",
+                name: "ImageURL",
+                table: "Studios",
                 type: "text",
                 nullable: false,
                 defaultValue: "");
-
-            migrationBuilder.CreateIndex(
-                name: "UK_AspNetUsers_NationalId",
-                table: "AspNetUsers",
-                column: "NationalId",
-                unique: true);
         }
     }
 }
