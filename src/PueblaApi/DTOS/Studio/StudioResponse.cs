@@ -9,6 +9,5 @@ public class StudioResponse
     public string Name { set; get; }
     public string Country { set; get; }
     public int FoundationYear { set; get; }
-    public string ImageURL { set; get; }
     public List<MovieResponse?> Movies { set; get; }
 }
