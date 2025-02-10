@@ -11,6 +11,7 @@ using PueblaApi.Settings;
 using PueblaApi.RequestHelpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 namespace PueblaApi.Controllers;
 
@@ -131,8 +132,8 @@ public class MovieController : ControllerBase
                 return NotFound($"Movie {id} was not found.");
 
             // 2. Delete image before deleting the object.
-            if (movie.ImageURL != null)
-                await this._imageService.DeleteImage(movie.ImageURL);
+            if (!movie.ImageURL.IsNullOrEmpty())
+                await this._imageService.DeleteImage(movie.ImageURL!);
 
             // 3. Remove entity from database and return.
             await this._movieRepository.Delete(movie);

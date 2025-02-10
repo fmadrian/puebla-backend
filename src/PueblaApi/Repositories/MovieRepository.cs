@@ -48,6 +48,11 @@ public class MovieRepository : IMovieRepository
 
     public async Task Delete(Movie item)
     {
+        // To delete the entity (not being tracked by context), we have to mark it as 'Deleted'.
+
+        // Set entity's state as deleted, then remove it from context and save.
+        this._context.Entry(item).State = EntityState.Deleted;
+
         this._context.Movies.Remove(item);
         int result = await this._context.SaveChangesAsync();
         if (result == 0)
