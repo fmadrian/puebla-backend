@@ -54,7 +54,7 @@ public class ImageService : IImageService
                 File = new FileDescription(file.Name, file.OpenReadStream()),
                 Overwrite = true,
                 PublicId = publicId ?? null, // Add public ID when overwriting/updating the image.
-                AssetFolder = this._imageServiceConfiguration.AssetFolderName,
+                AssetFolder = publicId == null ? this._imageServiceConfiguration.AssetFolderName : null,
                 UseAssetFolderAsPublicIdPrefix = true,
                 Transformation = new Transformation().Width(this._imageServiceConfiguration.MaxWidth)
                                 .Height(this._imageServiceConfiguration.MaxHeight).Crop("scale")

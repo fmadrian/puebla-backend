@@ -198,14 +198,21 @@ public class MovieController : ControllerBase
             else if (movie.Studio == null || dto.Studio != movie.Studio.Id)
                 movie.Studio = this._mapper.Map<Studio>(dto.Studio);
 
+
             // 3. Upload image using existent public ID and or create a new one if the 
             // image didn't exist before.
-
-            // If the image is not present in the DTO, there is no change.
-            // IMPORTANT: As it is, there is no way to delete an image without deleting the movie.
-            if (dto.Image != null)
-                await this._imageService.UploadImage(dto.Image, movie.ImageURL ?? null);
-
+            try
+            {
+                // If the image is not present in the DTO, there is no change.
+                // IMPORTANT: As it is, there is no way to delete an image without deleting the movie.
+                if (dto.Image != null)
+                    movie.ImageURL = await this._imageService.UploadImage(dto.Image, movie.ImageURL ?? null);
+            }
+            catch (Exception)
+            {
+                // If there is an exception while uploading the image, it can be ignored.
+                // The data the in database should be updated.
+            }
 
             // 4. Store entity in database and return.
             movie = await this._movieRepository.Update(movie);
