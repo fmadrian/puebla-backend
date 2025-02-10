@@ -74,7 +74,7 @@ public class StudioController : ControllerBase
             // 1. Search by ID.
             Studio studio = await this._studioRepository.GetById(id);
             if (studio == null)
-                return NotFound(ResponseHelper.UnsuccessfulResponse(@"Studio {id} doesn't exist"));
+                return NotFound(ResponseHelper.UnsuccessfulResponse($"Studio {id} doesn't exist"));
             // 2. Return mapped response.
             return Ok(ResponseHelper.SuccessfulResponse(this._mapper.Map<StudioResponse>(studio)));
         }

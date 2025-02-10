@@ -74,7 +74,7 @@ public class CategoryController : ControllerBase
             // 1. Search by ID.
             Category category = await this._categoryRepository.GetById(id);
             if (category == null)
-                return NotFound(ResponseHelper.UnsuccessfulResponse(@"Category {id} doesn't exist"));
+                return NotFound(ResponseHelper.UnsuccessfulResponse($"Category {id} doesn't exist"));
             // 2. Return mapped response.
             return Ok(ResponseHelper.SuccessfulResponse(this._mapper.Map<CategoryResponse>(category)));
         }

@@ -46,7 +46,7 @@ public class MovieController : ControllerBase
             // 1. Search by ID.
             Movie movie = await this._movieRepository.GetById(id);
             if (movie == null)
-                return NotFound(ResponseHelper.UnsuccessfulResponse(@"Movie {id} doesn't exist"));
+                return NotFound(ResponseHelper.UnsuccessfulResponse($"Movie {id} doesn't exist"));
             // 2. Return mapped response.
             return Ok(ResponseHelper.SuccessfulResponse(this._mapper.Map<MovieResponse>(movie)));
         }
