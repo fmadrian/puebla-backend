@@ -39,13 +39,24 @@ public class StudioRepository : IStudioRepository
 
     public async Task Delete(Studio item)
     {
-        // To delete the entity (not being tracked by context), we have to mark it as 'Deleted'.
-        // Set entity's state as deleted, then remove it from context and save.
-        this._context.Entry(item).State = EntityState.Deleted;
-        this._context.Studios.Remove(item);
+        // Search and load item and related items in context.
+        Studio studio = await this._context.Studios.Where(i => i.Id == item.Id)
+                        .Include(i => i.Movies).FirstOrDefaultAsync();
+
+        // Every movie retrieved by the studio, has to be derefenced / set null.
+        foreach (Movie movie in studio!.Movies)
+        {
+            movie.Studio = null;
+            movie.StudioId = null;
+        }
+        // Save changes and delete the entity.
+        await this._context.SaveChangesAsync();
+
+        // Entity does not need to be marked as 'Deleted' as it has already been loaded in context.
+        this._context.Studios.Remove(studio);
         int result = await this._context.SaveChangesAsync();
         if (result == 0)
-            throw new ApiException("[REPOSITORY]: Couldn't add remove item from database.");
+            throw new ApiInternalException("[REPOSITORY]: Couldn't add remove item from database.");
     }
 
     public async Task<Studio?> GetById(long id)
